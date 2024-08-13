@@ -251,6 +251,8 @@ const Userinfo = () => {
                     </Button>
                 </Toolbar>
             </AppBar>
+
+
             <Box
                 sx={{
                     bgcolor: "#FFFFFF",
@@ -262,7 +264,7 @@ const Userinfo = () => {
                     justifyContent: 'center'
                 }}
             >
-
+                {/* Box ที่แสดงข้อความ ว่า ข้อมูลผู้ใช้งาน */}
                 <Box
                     sx={{
                         width: "293px",

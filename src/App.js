@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Login from './components/login';
 import Register from './components/register';
 import UserInfo from './components/userinfo';
@@ -12,10 +12,11 @@ const App = () => {
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<Navigate to="/login" />} /> {/* กำหนดให้หน้าแรกเปลี่ยนเส้นทางไปหน้า login */}
         <Route path="/login" element={<Login setUser={setUser} />} />
         <Route path="/register" element={<Register />} />
         <Route path="/userinfo" element={<UserInfo user={user} />} />
-        <Route path="/editproduct" element={<EditProduct /> } />
+        <Route path="/editproduct" element={<EditProduct />} />
         <Route path="/home" element={<Home user={user} />} />
       </Routes>
     </Router>

@@ -134,6 +134,7 @@ const Login = ({ setUser }) => {
                             }}
                         />
                         <Button
+                            // เมื่อกดปุ่ม Login ฟังก์ชั่น handleSubmit จะทำงาน
                             onClick={handleSubmit}
                             sx={{
                                 borderRadius: '50px',
@@ -143,6 +144,7 @@ const Login = ({ setUser }) => {
                                 width: '60%',
                                 marginTop: '24px',
                                 height: '57px',
+                                // hover คือ ถ้าชี้แล้ว bgcolor(สีพื้นหลัง) จะเปลี่ยนไป
                                 '&:hover': {
                                     bgcolor: '#7A7053'
                                 }
@@ -150,6 +152,8 @@ const Login = ({ setUser }) => {
                         >
                             Login
                         </Button>
+
+                        {/* เส้นขีด */}
                         <Divider
                             sx={{
                                 width: '50%',
@@ -165,7 +169,10 @@ const Login = ({ setUser }) => {
                         >
                             Don't have an account ?
                         </Typography>
+
+                        {/* ปุ่ม Register */}
                         <Button
+                            // เมื่อคลิก ฟังก์ชั่น handleRegister จะทำงาน
                             onClick={handleRegister}
                             sx={{
                                 borderRadius: '50px',

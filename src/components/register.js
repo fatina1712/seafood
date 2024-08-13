@@ -240,6 +240,7 @@ const Register = () => {
                                 },
                                 endAdornment: (
                                     <InputAdornment position="end">
+                                        {/* ปุ่มกดแสดง หรือ ปิด password ของเรา จะ set ไว้ให้ปิดก่อน ถ้ากดอีกครั้งจะเปิด แล้วสามารถดู password ที่พิมพ์ไปได้ */}
                                         <IconButton
                                             onClick={handleClickShowPassword}
                                             edge="end"
