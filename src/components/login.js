@@ -52,13 +52,13 @@ const Login = ({ setUser }) => {
                         justifyContent: 'center',
                     }}
                 >
-                    <FormControl
-                        onSubmit={handleSubmit}
+                    <Box
                         sx={{
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
-                            width: '80%'
+                            width: '80%',
+                            flexDirection: 'column'
                         }}
                     >
                         <Typography
@@ -71,10 +71,9 @@ const Login = ({ setUser }) => {
                         >
                             Login
                         </Typography>
-                        
+
                         {/* textfield ของ username */}
                         <TextField
-                            id="branch"
                             placeholder='Username'
                             variant="outlined"
                             // กำหนดให้ข้อมูลที่กรอกเป็นค่าของ username
@@ -97,8 +96,9 @@ const Login = ({ setUser }) => {
                                 bgcolor: 'white'
                             }}
                         />
+
+                        {/* textfield ของ password */}
                         <TextField
-                            id="password"
                             placeholder='Password'
                             variant="outlined"
                             type={showPassword ? 'text' : 'password'}
@@ -128,11 +128,13 @@ const Login = ({ setUser }) => {
                             }}
                             sx={{
                                 width: '100%',
-                                mt: '12px',
+                                marginTop: '12px',
                                 borderRadius: '50px',
                                 bgcolor: 'white'
                             }}
                         />
+
+                        {/* ปุ่ม login */}
                         <Button
                             // เมื่อกดปุ่ม Login ฟังก์ชั่น handleSubmit จะทำงาน
                             onClick={handleSubmit}
@@ -160,6 +162,7 @@ const Login = ({ setUser }) => {
                                 marginTop: '24px'
                             }}
                         />
+                        
                         <Typography
                             sx={{
                                 color: '#524B38',
@@ -189,7 +192,7 @@ const Login = ({ setUser }) => {
                         >
                             Register
                         </Button>
-                    </FormControl>
+                    </Box>
                 </Box>
             </Box>
         </>

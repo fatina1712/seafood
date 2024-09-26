@@ -73,9 +73,8 @@ function EditProduct() {
   // เอาข้อมูลเดิมจากฐานข้อมูล มาใส่ในตัวแปรนี้ แล้วเอาไปโชว์ตอนกด แก้ไข
   const [currentProduct, setCurrentProduct] = React.useState({});
 
-  const [openAdd, setOpenAdd] = React.useState(false);
-
   // ฟังก์ชั่น เปิด - ปิด Modal ของการเพิ่มสินค้า
+  const [openAdd, setOpenAdd] = React.useState(false);
   const handleAddOpen = () => setOpenAdd(true);
   const handleAddClose = () => setOpenAdd(false);
 
