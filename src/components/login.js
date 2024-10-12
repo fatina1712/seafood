@@ -18,14 +18,20 @@ const Login = ({ setUser }) => {
         try {
             const response = await axios.post('http://localhost:3000/api/login', { username, password });
             setUser(response.data.user);
-            // เมื่อกด login จะบันทึก token ไปยัง database และติดไว้ใน browser เพื่อใช้งานเว็บในข้อมูลของ user นั้นๆ
             localStorage.setItem('token', response.data.accessToken);
             localStorage.setItem('refreshToken', response.data.refreshToken);
-            navigate('/home'); // เมื่อ login เสร็จแล้วพาไปหน้า /home
+
+            // เช็คว่า username เป็น admin หรือไม่
+            if (response.data.user.username === 'admin') {
+                navigate('/editproduct'); // ถ้าเป็น admin ให้ไปหน้า /editproduct
+            } else {
+                navigate('/home'); // ถ้าไม่ใช่ admin ให้ไปหน้า /home
+            }
         } catch (error) {
             console.error('Login failed:', error.response?.data || error.message);
         }
     };
+
 
     const handleRegister = () => {
         navigate('/register'); // เมื่อกด register จะพาไปหน้า /register
@@ -162,7 +168,7 @@ const Login = ({ setUser }) => {
                                 marginTop: '24px'
                             }}
                         />
-                        
+
                         <Typography
                             sx={{
                                 color: '#524B38',

@@ -6,11 +6,10 @@ import IconButton from "@mui/material/IconButton";
 import "@fontsource/ibm-plex-sans-thai";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
-import HomeIcon from "@mui/icons-material/Home";
-import ShoppingBasketIcon from "@mui/icons-material/ShoppingBasket";
-import HelpIcon from "@mui/icons-material/Help";
-import PhoneIcon from "@mui/icons-material/Phone";
-import ArticleIcon from "@mui/icons-material/Article";
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import axios from "axios";
 import { useNavigate } from 'react-router-dom';
 import { Box, Grid, TextField, Typography } from "@mui/material";
@@ -20,36 +19,23 @@ import MenuItem from '@mui/material/MenuItem';
 
 const Userinfo = () => {
     const [userInfo, setUserInfo] = useState(null);
+    const [orders, setOrders] = useState([]); // เก็บข้อมูล order
     const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = React.useState(null);
     const open = Boolean(anchorEl);
+
     const handleClick = (event) => {
         setAnchorEl(event.currentTarget);
     };
+
     const handleClose = () => {
         setAnchorEl(null);
     };
-
-    // ดึงข้อมูลจากฐานข้อมูลมาใส่ในตัวแปรนี้ แล้วเอาไปแสดง
-    const [products, setProducts] = React.useState([]);
-
-    // ดึงข้อมูลมาจาก api/data เพื่อนำข้อมูลเมนูมาโชว์
-    useEffect(() => {
-        axios.get('http://localhost:3000/api/data')
-            .then(response => {
-                setProducts(response.data);
-            })
-            .catch(error => {
-                console.error("There was an error fetching the data!", error);
-            });
-    }, []);
 
     // ดึงข้อมูล user มาโชว์
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // เมื่อแต่ละ user login ทางระบบจะสุ่ม token เพื่อ login ให้ และบันทึกไปยัง database
-                // ตอนที่ดึงข้อมูลของ user มาโชว์ ก็ดึงมาจาก token เพราะเมื่อล็อกอินแล้ว browser ของเราจะติด token นั้นไว้สักพัก
                 const response = await axios.get('http://localhost:3000/api/protected-data', {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('token')}`
@@ -64,24 +50,60 @@ const Userinfo = () => {
         fetchData();
     }, []);
 
-    // logout
+
+    // ฟังก์ชั่น logout
     const handleLogout = async () => {
         try {
             const refreshToken = localStorage.getItem('refreshToken');
             await axios.post('http://localhost:3000/api/logout', { refreshToken });
-            // เมื่อ logout ก็จะ remove token ที่มีอยู่ออกไปทั้งใน browser และ database
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
-            // เมื่อกด logout จะพาไปหน้า login
             navigate('/login');
         } catch (error) {
             console.error('Failed to logout:', error.response?.data || error.message);
         }
     };
 
-    // ย้ายไปหน้า /home
+    // ฟังก์ชั่น navigate ไปยัง history
+    const handleHistory = () => {
+        navigate('/orderhistory');
+    };
+
+    // ฟังก์ชั่น navigate ไป /userinfo
+    const handleUserinfo = () => {
+        navigate('/userinfo');
+    };
+
+    // ฟังก์ชั่น navigate ไป /home
     const handleHome = () => {
         navigate('/home');
+    };
+
+    const [openModal, setOpenModal] = useState(false); // State to control modal open/close
+
+    const handleOpenModal = () => {
+        setOpenModal(true);
+    };
+
+    const handleCloseModal = () => {
+        setOpenModal(false);
+    };
+
+    // Update user info
+    const handleUpdate = async () => {
+        try {
+            const response = await axios.put('http://localhost:3000/api/update-user', userInfo, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            if (response.status === 200) {
+                console.log('User info updated successfully');
+                handleCloseModal(); // Close the modal after updating
+            }
+        } catch (error) {
+            console.error('Failed to update user info:', error.response?.data || error.message);
+        }
     };
 
     return (
@@ -93,50 +115,17 @@ const Userinfo = () => {
                     paddingLeft: '24px',
                     paddingRight: '24px',
                     display: 'flex',
-                    justifyContent: 'center',
+                    // justifyContent: 'center',
+                    // alignItems:'center'
                 }}>
                 <Toolbar disableGutters>
-                    <img src="/logo.png" style={{ height: "80px", width: "80px", marginLeft: 'auto' }} />
-
-                    <TextField
-                        id="branch"
-                        placeholder='ค้นหาสินค้า'
-                        variant="outlined"
-                        InputLabelProps={{
-                            style: { color: '#878787' }
-                        }}
-                        InputProps={{
-                            style: {
-                                border: '1px solid #878787',
-                                borderRadius: '50px'
-                            }
-                        }}
-                        sx={{
-                            width: '40%',
-                            borderRadius: '50px',
-                            bgcolor: 'white',
-                            marginLeft: 'auto'
-                        }}
+                    <img
+                        src="/logo.png"
+                        style={{ height: "80px", width: "80px", marginRight: 'auto', cursor: 'pointer' }}
+                        onClick={handleHome}
                     />
 
-                    <Button
-                        sx={{
-                            width: '10%',
-                            height: '56px',
-                            borderRadius: '10px',
-                            border: '3px solid #FFFFFF',
-                            color: '#FFFFFF',
-                            marginLeft: 'auto'
-                        }}
-                    >
-                        <ShoppingCartIcon
-                            sx={{
-                                marginRight: '48px'
-                            }}
-                        />
 
-                        ฿
-                    </Button>
 
                     <IconButton
                         aria-controls={open ? 'basic-menu' : undefined}
@@ -158,97 +147,15 @@ const Userinfo = () => {
                             'aria-labelledby': 'basic-button',
                         }}
                     >
-                        <MenuItem onClick={handleClose}>Profile</MenuItem>
-                        <MenuItem onClick={handleClose}>My account</MenuItem>
+                        <MenuItem onClick={handleUserinfo}>Profile</MenuItem>
+                        <MenuItem onClick={handleHistory}>History</MenuItem>
                         <MenuItem onClick={handleLogout}>Logout</MenuItem>
                     </Menu>
                     {userInfo && (
-                        <Typography sx={{ color: "#FFFFFF", marginLeft: "16px", fontSize: "20px", fontWeight: "700", fontFamily: "IBM Plex Sans Thai", marginRight: 'auto' }}>
+                        <Typography sx={{ color: "#FFFFFF", marginLeft: "16px", fontSize: "20px", fontWeight: "700", fontFamily: "IBM Plex Sans Thai" }}>
                             {userInfo.username}
                         </Typography>
                     )}
-                </Toolbar>
-            </AppBar>
-            <AppBar
-                position="static"
-                sx={{
-                    bgcolor: "#938667",
-                    paddingLeft: '24px',
-                    paddingRight: '24px',
-                    backgroundColor: '#EAAF18',
-                    height: '50px',
-                    display: 'flex',
-                    justifyContent: 'center'
-                }}>
-                <Toolbar disableGutters>
-                    <Button
-                        onClick={handleHome}
-                        sx={{
-                            color: "#FFFFFF",
-                            marginLeft: "auto",
-                            fontSize: "16px",
-                            fontWeight: "700",
-                            fontFamily: "IBM Plex Sans Thai",
-                        }}
-                    >
-                        <HomeIcon sx={{ marginRight: "8px", fontSize: "32px" }} />
-                        หน้าแรก
-                    </Button>
-
-                    <Button
-                        sx={{
-                            color: "#FFFFFF",
-                            marginLeft: "auto",
-                            fontSize: "16px",
-                            fontWeight: "700",
-                            fontFamily: "IBM Plex Sans Thai",
-                        }}
-                    >
-                        <ShoppingBasketIcon
-                            sx={{ marginRight: "8px", fontSize: "32px" }}
-                        />
-                        สินค้า
-                    </Button>
-
-                    <Button
-                        sx={{
-                            color: "#FFFFFF",
-                            marginLeft: "auto",
-                            fontSize: "16px",
-                            fontWeight: "700",
-                            fontFamily: "IBM Plex Sans Thai",
-                        }}
-                    >
-                        <HelpIcon sx={{ marginRight: "8px", fontSize: "32px" }} />
-                        คำถามที่พบบ่อย
-                    </Button>
-
-                    <Button
-                        sx={{
-                            color: "#FFFFFF",
-                            marginLeft: "auto",
-                            fontSize: "16px",
-                            fontWeight: "700",
-                            fontFamily: "IBM Plex Sans Thai",
-                        }}
-                    >
-                        <PhoneIcon sx={{ marginRight: "8px", fontSize: "32px" }} />
-                        ติดต่อเรา
-                    </Button>
-
-                    <Button
-                        sx={{
-                            color: "#FFFFFF",
-                            marginLeft: "auto",
-                            fontSize: "16px",
-                            fontWeight: "700",
-                            fontFamily: "IBM Plex Sans Thai",
-                            marginRight: 'auto'
-                        }}
-                    >
-                        <ArticleIcon sx={{ marginRight: "8px", fontSize: "32px" }} />
-                        เงื่อนใขการให้บริการ
-                    </Button>
                 </Toolbar>
             </AppBar>
 
@@ -304,6 +211,25 @@ const Userinfo = () => {
                             borderRadius: '30px',
                             padding: '24px 0px'
                         }}>
+                        <Button
+                            onClick={handleOpenModal}
+                            sx={{
+                                width: "29px",
+                                height: "30px",
+                                borderRadius: "30px",
+                                border: "1px solid #FFFFFF",
+                                fontSize: "12px",
+                                fontWeight: "700",
+                                fontFamily: "IBM Plex Sans Thai",
+                                color: "#FFFFFF",
+                                display:'flex',
+                                position:'absolute',
+                                marginLeft:'290px',
+                                marginTop:'-18px'
+                            }}
+                            variant="contained">
+                            แก้ไข
+                        </Button>
                         {/* เรียกตามตัวแปรใน database */}
                         <Typography sx={{ color: "black", marginLeft: "16px", fontSize: "20px", fontWeight: "700", fontFamily: "IBM Plex Sans Thai", marginRight: 'auto' }}>
                             Username : {userInfo.username}
@@ -311,10 +237,76 @@ const Userinfo = () => {
                         <Typography sx={{ color: "black", marginLeft: "16px", fontSize: "20px", fontWeight: "700", fontFamily: "IBM Plex Sans Thai", marginRight: 'auto' }}>
                             Email : {userInfo.email}
                         </Typography>
+                        <Typography sx={{ color: "black", marginLeft: "16px", fontSize: "20px", fontWeight: "700", fontFamily: "IBM Plex Sans Thai", marginRight: 'auto' }}>
+                            Name : {userInfo.cname}
+                        </Typography>
+                        <Typography sx={{ color: "black", marginLeft: "16px", fontSize: "20px", fontWeight: "700", fontFamily: "IBM Plex Sans Thai", marginRight: 'auto' }}>
+                            Lastname : {userInfo.clastname}
+                        </Typography>
+                        <Typography sx={{ color: "black", marginLeft: "16px", fontSize: "20px", fontWeight: "700", fontFamily: "IBM Plex Sans Thai", marginRight: 'auto' }}>
+                            Phone : {userInfo.phone}
+                        </Typography>
+                        <Typography sx={{ color: "black", marginLeft: "16px", fontSize: "20px", fontWeight: "700", fontFamily: "IBM Plex Sans Thai", marginRight: 'auto' }}>
+                            Address : {userInfo.address}
+                        </Typography>
 
                     </Box>
                 )}
             </Box>
+
+            <Dialog open={openModal} onClose={handleCloseModal}>
+                <DialogTitle>แก้ไขข้อมูลผู้ใช้งาน</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        fullWidth
+                        margin="dense"
+                        label="Username"
+                        value={userInfo?.username || ''}
+                        onChange={(e) => setUserInfo({ ...userInfo, username: e.target.value })}
+                    />
+                    <TextField
+                        fullWidth
+                        margin="dense"
+                        label="Email"
+                        value={userInfo?.email || ''}
+                        onChange={(e) => setUserInfo({ ...userInfo, email: e.target.value })}
+                    />
+                    <TextField
+                        fullWidth
+                        margin="dense"
+                        label="Name"
+                        value={userInfo?.cname || ''}
+                        onChange={(e) => setUserInfo({ ...userInfo, cname: e.target.value })}
+                    />
+                    <TextField
+                        fullWidth
+                        margin="dense"
+                        label="Lastname"
+                        value={userInfo?.clastname || ''}
+                        onChange={(e) => setUserInfo({ ...userInfo, clastname: e.target.value })}
+                    />
+                    <TextField
+                        fullWidth
+                        margin="dense"
+                        label="Phone"
+                        value={userInfo?.phone || ''}
+                        onChange={(e) => setUserInfo({ ...userInfo, phone: e.target.value })}
+                    />
+                    <TextField
+                        fullWidth
+                        margin="dense"
+                        label="Address"
+                        value={userInfo?.address || ''}
+                        onChange={(e) => setUserInfo({ ...userInfo, address: e.target.value })}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseModal}>ยกเลิก</Button>
+                    <Button onClick={handleUpdate} variant="contained">
+                        บันทึก
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 };

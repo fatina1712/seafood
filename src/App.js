@@ -5,6 +5,8 @@ import Register from './components/register';
 import UserInfo from './components/userinfo';
 import EditProduct from './components/editproduct';
 import Home from './components/home';
+import OderUserHistory from './components/oderuserhistory';
+import Admin from './components/admin';
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -18,6 +20,8 @@ const App = () => {
         <Route path="/userinfo" element={<UserInfo user={user} />} />
         <Route path="/editproduct" element={<EditProduct />} />
         <Route path="/home" element={<Home user={user} />} />
+        <Route path="/orderhistory" element={<OderUserHistory user={user} />} />
+        <Route path="/admin" element={<Admin user={user} />} />
       </Routes>
     </Router>
   );

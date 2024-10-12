@@ -9,58 +9,14 @@ import "@fontsource/ibm-plex-sans-thai";
 import Container from "@mui/material/Container";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
-import HomeIcon from "@mui/icons-material/Home";
-import ShoppingBasketIcon from "@mui/icons-material/ShoppingBasket";
-import HelpIcon from "@mui/icons-material/Help";
-import PhoneIcon from "@mui/icons-material/Phone";
-import ArticleIcon from "@mui/icons-material/Article";
-import { Grid, styled } from "@mui/material";
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import { Grid2, styled, FormControlLabel } from "@mui/material";
 import axios from "axios";
 import Switch from "@mui/material/Switch";
 import Modal from "@mui/material/Modal";
 import TextField from "@mui/material/TextField";
-
-const AntSwitch = styled(Switch)(({ theme }) => ({
-  width: '61px',
-  height: '34px',
-  padding: 0,
-  display: 'flex',
-  '&:active': {
-    '& .MuiSwitch-thumb': {
-      width: 24,
-    },
-    '& .MuiSwitch-switchBase.Mui-checked': {
-      transform: 'translateX(27px)',
-    },
-  },
-  '& .MuiSwitch-switchBase': {
-    padding: 5,
-    '&.Mui-checked': {
-      transform: 'translateX(27px)',
-      color: '#fff',
-      '& + .MuiSwitch-track': {
-        opacity: 1,
-        backgroundColor: theme.palette.mode === 'dark' ? '#177ddc' : '#1890ff',
-      },
-    },
-  },
-  '& .MuiSwitch-thumb': {
-    boxShadow: '0 2px 4px 0 rgb(0 35 11 / 20%)',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    transition: theme.transitions.create(['width'], {
-      duration: 200,
-    }),
-  },
-  '& .MuiSwitch-track': {
-    borderRadius: 17,
-    opacity: 1,
-    backgroundColor:
-      theme.palette.mode === 'dark' ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.25)',
-    boxSizing: 'border-box',
-  },
-}));
+import { useNavigate } from 'react-router-dom';
 
 function EditProduct() {
 
@@ -77,6 +33,9 @@ function EditProduct() {
   const [openAdd, setOpenAdd] = React.useState(false);
   const handleAddOpen = () => setOpenAdd(true);
   const handleAddClose = () => setOpenAdd(false);
+  const [anchorEl, setAnchorEl] = React.useState(null);
+  const navigate = useNavigate();
+
 
   // บันทึกข้อมูลใหม่ลงในตัวแปรนี้ แล้วบันทึกไปใน ฐานข้อมูล
   const [newProduct, setNewProduct] = React.useState({
@@ -84,6 +43,15 @@ function EditProduct() {
     price_per_kg: '',
     productimage: ''
   });
+
+  // เอาไว้เปิดตัว icon avatar
+  const handleClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseAvatar = () => {
+    setAnchorEl(null);
+  };
 
 
   // เมื่อกดเพิ่มข้อมูล จะบันทึกข้อมูลลง ตามคำสั่งที่เขียนไว้ใน server.js ตามลำดับ
@@ -97,16 +65,26 @@ function EditProduct() {
 
   // เมื่อกด เพิ่มข้อมูล จะทำตามคำสั่ง axios.post คือการบันทึกข้อมูลลงฐานข้อมูลตามคำสั่งที่เขียนไว้ในหน้า server.js
   const handleAddSave = () => {
-    axios.post('http://localhost:3000/api/data', newProduct)
+    const formData = new FormData();
+    formData.append('menu', newProduct.menu);
+    formData.append('price_per_kg', newProduct.price_per_kg);
+    formData.append('productImage', newProduct.productImage); // Add image file
+
+    axios.post('http://localhost:3000/api/data', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
       .then(response => {
         console.log(response.data);
-        setProducts([...products, newProduct]);
+        setProducts([...products, response.data.product]);
         handleAddClose();
       })
       .catch(error => {
-        console.error("There was an error adding the product!", error);
+        console.error('There was an error adding the product!', error);
       });
   };
+
 
   // ดึงข้อมูลมาแสดงตลอด เมื่อมีการเปลี่ยนแปลงของหน้าเว็บ
   useEffect(() => {
@@ -153,12 +131,27 @@ function EditProduct() {
 
   // เมื่อกดปุ่มบันทึก ใน Modal แก้ไข ข้อมูลจะ update ลงไปใน ตาราง product โดยจะอัพเดทตาม pid จากข้อมูลที่กดแก้ไขมา
   const handleSave = () => {
-    axios.put(`http://localhost:3000/api/data/${currentProduct.pid}`, currentProduct)
+    const formData = new FormData();
+    formData.append('menu', currentProduct.menu);
+    formData.append('price_per_kg', currentProduct.price_per_kg);
+
+    // ตรวจสอบว่ามีการอัปโหลดรูปใหม่มั้ย
+    if (currentProduct.productImage) {
+      formData.append('productImage', currentProduct.productImage);
+    }
+
+    axios.put(`http://localhost:3000/api/data/${currentProduct.pid}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
       .then(response => {
         console.log(response.data);
         setProducts(products.map(product =>
           product.pid === currentProduct.pid ? currentProduct : product
         ));
+        // เมื่อกดอัพเดทแล้ว ดึงข้อมูล Products มาอีกครั้ง จะได้ไม่ต้อง restart หน้าเว็บใหม่ ข้อมูลจะดึงมาเลยตอนเปลี่ยน
+        fetchProducts();
         handleClose();
       })
       .catch(error => {
@@ -166,82 +159,81 @@ function EditProduct() {
       });
   };
 
+  // ฟังก์ชั่นดึงข้อมูลของ Products มาแสดง
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/api/data');
+      setProducts(response.data);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
+
+  // useEffect เรียกใช้ fetchProducts เพราะ จะได้ดึงข้อมูล products มาแสดงตั้งแต่เว็บเปิดมา
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const [status, setStatus] = React.useState(false);  // false = 0, true = 1
+
+  // ฟังก์ชั่น เปลี่ยน status เมื่อคลิกจะเปลี่ยน status ใส่ลงในตัวแปร newStatus แล้ว เอา newStatus ไปใส่ใน setStatus อีกที
+  const handleStatusChange = (e, pid) => {
+    const newStatus = e.target.checked; // true if switch is on, false if off
+    setStatus(newStatus);
+
+    // ส่งคำสั่งไปยัง API เพื่ออัพเดท status
+    axios.put(`http://localhost:3000/api/product/${pid}/status`, { status: newStatus })
+      .then(() => {
+        fetchProducts(); // รีเฟรชข้อมูล
+      })
+      .catch((error) => {
+        console.error('Error updating product status:', error);
+      });
+  };
+
+  // ฟังก์ชั่น navigate ไปยังหน้า admin 
+  const handleHistoryAdmin = () => {
+    navigate('/admin');
+  }
+
+
+
   return (
     <>
       <AppBar position="static" sx={{ bgcolor: "#938667", paddingLeft: '24px', paddingRight: '24px' }}>
         <Toolbar disableGutters>
           <img src="/logo.png" style={{ height: "80px", width: "80px" }} />
 
-          <Button
+
+
+          {/* อวตาร์แสดงฟังก์ชั่น profile logout ใช้เป็น iconbutton เพราะถ้าใช้ icon เฉยๆจะไม่สามารถคลิกได้ */}
+          <IconButton
+            aria-controls={anchorEl ? 'basic-menu' : undefined}
+            aria-haspopup="true"
+            aria-expanded={anchorEl ? 'true' : undefined}
+            // คลิกเพื่อเปิด คลิกอีกครั้งจะปิด
+            onClick={handleClick}
             sx={{
-              color: "#FFFFFF",
-              marginLeft: "230px",
-              fontSize: "20px",
-              fontWeight: "700",
-              fontFamily: "IBM Plex Sans Thai",
+              marginLeft: 'auto',
             }}
           >
-            <HomeIcon sx={{ marginRight: "8px", fontSize: "32px" }} />
-            หน้าแรก
-          </Button>
-
-          <Button
-            sx={{
-              color: "#FFFFFF",
-              marginLeft: "24px",
-              fontSize: "20px",
-              fontWeight: "700",
-              fontFamily: "IBM Plex Sans Thai",
-            }}
-          >
-            <ShoppingBasketIcon
-              sx={{ marginRight: "8px", fontSize: "32px" }}
-            />
-            สินค้า
-          </Button>
-
-          <Button
-            sx={{
-              color: "#FFFFFF",
-              marginLeft: "24px",
-              fontSize: "20px",
-              fontWeight: "700",
-              fontFamily: "IBM Plex Sans Thai",
-            }}
-          >
-            <HelpIcon sx={{ marginRight: "8px", fontSize: "32px" }} />
-            คำถามที่พบบ่อย
-          </Button>
-
-          <Button
-            sx={{
-              color: "#FFFFFF",
-              marginLeft: "24px",
-              fontSize: "20px",
-              fontWeight: "700",
-              fontFamily: "IBM Plex Sans Thai",
-            }}
-          >
-            <PhoneIcon sx={{ marginRight: "8px", fontSize: "32px" }} />
-            ติดต่อเรา
-          </Button>
-
-          <Button
-            sx={{
-              color: "#FFFFFF",
-              marginLeft: "24px",
-              fontSize: "20px",
-              fontWeight: "700",
-              fontFamily: "IBM Plex Sans Thai",
-            }}
-          >
-            <ArticleIcon sx={{ marginRight: "8px", fontSize: "32px" }} />
-            เงื่อนใขการให้บริการ
-          </Button>
-
-          <IconButton sx={{ marginLeft: 'auto' }}>
             <Avatar />
           </IconButton>
+
+          <Menu
+            id="basic-menu"
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleCloseAvatar}
+            MenuListProps={{
+              'aria-labelledby': 'basic-button',
+            }}
+          >
+
+            {/* ฟังก์ชั่น navigate ไปยังหน้า history ของ admin */}
+            <MenuItem onClick={handleHistoryAdmin}>History Admin</MenuItem>
+          </Menu>
+
         </Toolbar>
       </AppBar>
 
@@ -282,11 +274,12 @@ function EditProduct() {
           </Typography>
 
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', mt: '24px', width: '80%', flexDirection: 'column' }}>
-          <Grid container sx={{ mx: 'auto' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mt: '24px', width: '70%', flexDirection: 'column' }}>
+          <Grid2 container spacing={3} sx={{ mx: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            {/* ดึงข้อมูลแบบวนลูป ถ้ามีข้อมูลใน database จะดึงมาแสดงจนกว่าจะครบ */}
             {products.map((product) => (
 
-              <Grid item xs={12} md={6} l={6} xl={4} key={product.pid}>
+              <Grid2 item key={product.pid}>
 
                 <Box
                   sx={{
@@ -302,6 +295,7 @@ function EditProduct() {
                     marginTop: '24px',
                   }}
                 >
+                  {/* Switch and Label */}
                   <Box
                     sx={{
                       width: '100%',
@@ -312,33 +306,43 @@ function EditProduct() {
                       marginBottom: '16px'
                     }}
                   >
-                    <Typography sx={{ marginLeft: 'auto', marginRight: '12px', fontSize: '16px', fontWeight: '700', fontFamily: 'IBM Plex Sans Thai' }} >
+                    <Typography sx={{ marginLeft: 'auto', marginRight: '12px', fontSize: '16px', fontWeight: '700', fontFamily: 'IBM Plex Sans Thai' }}>
                       ปิดเมื่อรายการสินค้าหมด
                     </Typography>
-                    <AntSwitch
-                      defaultChecked
-                      inputProps={{ 'aria-label': 'ant design' }}
-                      sx={{
-                        marginRight: 'auto'
-                      }}
+
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          // ตัวนี้เป็นตัว เช็คว่า ถ้า status = 1 จะเป็นติ๊กเปิดสีฟ้า ถ้า status = 0 จะเป็นติ๊กปิดสีเทา
+                          checked={product.status}
+                          // ฟังก์ชั่นเมื่อคลิกแล้วจะเปลี่ยน status ของตัว product
+                          onChange={(e) => handleStatusChange(e, product.pid)}
+                          name={`status-${product.pid}`}
+                          color="primary"
+                        />
+                      }
+                      // ข้อความข้างหลัง switch ถ้า status === 1 จะแสดง เปิด ถ้าไม่ใช่ จะแสดง ปิด
+                      label={product.status === 1 ? "เปิด" : "ปิด"}
                     />
+
                   </Box>
 
+                  {/* Product Image */}
                   <Box
                     sx={{
                       width: "300px",
                       height: "200px",
                     }}
                   >
-
                     <img
+                      // ดึงข้อมูล productimage มาแสดง
                       src={product.productimage}
                       alt={product.menu}
                       style={{ width: '100%', height: '100%', borderRadius: '10px' }}
                     />
-
                   </Box>
 
+                  {/* Product Menu */}
                   <Typography
                     sx={{
                       fontSize: '24px',
@@ -348,9 +352,11 @@ function EditProduct() {
                       marginTop: '8px'
                     }}
                   >
+                    {/* ดึงข้อมูล productmenu มาแสดง */}
                     {product.menu}
                   </Typography>
 
+                  {/* Product Price */}
                   <Typography
                     sx={{
                       fontSize: '24px',
@@ -360,9 +366,11 @@ function EditProduct() {
                       marginTop: '8px'
                     }}
                   >
+                    {/* ดึงข้อมูล ราคาต่อกิโล มาแสดง */}
                     {product.price_per_kg} บาท / กิโลกรัม
                   </Typography>
 
+                  {/* Buttons */}
                   <Box
                     sx={{
                       width: '100%',
@@ -373,8 +381,6 @@ function EditProduct() {
                       marginTop: '16px'
                     }}
                   >
-
-                    {/* ปุ่มลบ */}
                     <Button
                       variant="contained"
                       sx={{
@@ -388,13 +394,12 @@ function EditProduct() {
                         fontFamily: "IBM Plex Sans Thai",
                         borderRadius: '10px'
                       }}
+                      // เมื่อคลิกจะลบข้อมูลของ pid นั้นๆ ใน Box สินค้าที่เราคลิก
                       onClick={() => handleDelete(product.pid)}
                     >
                       ลบ
                     </Button>
 
-
-                    {/* ปุ่มแก้ไข */}
                     <Button
                       sx={{
                         width: '87px',
@@ -408,6 +413,7 @@ function EditProduct() {
                         fontFamily: "IBM Plex Sans Thai",
                         borderRadius: '10px'
                       }}
+                      // เมื่อคลิกจะแก้ไข โดยดึงข้อมูลของ product ตัวที่เราคลิกมา
                       onClick={() => handleEdit(product)}
                     >
                       แก้ไข
@@ -416,9 +422,9 @@ function EditProduct() {
                   </Box>
 
                 </Box>
-              </Grid>
+              </Grid2>
             ))}
-          </Grid>
+          </Grid2>
 
           {/* ปุ่มเพิ่มสินค้า */}
           <Button
@@ -434,6 +440,7 @@ function EditProduct() {
               color: "#FFFFFF",
               marginTop: '24px'
             }}
+            // เมื่อคลิกจะขึ้น Modal มาให้เพิ่มข้อมูลสินค้า
             onClick={handleAddOpen}
           >
             เพิ่มข้อมูล
@@ -465,16 +472,7 @@ function EditProduct() {
           <Typography id="modal-title-add" variant="h6" component="h2">
             เพิ่มข้อมูลสินค้า
           </Typography>
-          {/* <TextField
-            margin="normal"
-            fullWidth
-            label="รหัสสินค้า"
-            name="pid"
-            value={newProduct.pid}
-            onChange={handleAddChange}
-            variant="outlined"
-            sx={{ mt: 2 }}
-          /> */}
+
           <TextField
             margin="normal"
             fullWidth
@@ -495,16 +493,17 @@ function EditProduct() {
             variant="outlined"
             sx={{ mt: 2 }}
           />
-          <TextField
-            margin="normal"
-            fullWidth
-            label="URL รูปสินค้า"
-            name="productimage"
-            value={newProduct.productimage}
-            onChange={handleAddChange}
-            variant="outlined"
-            sx={{ mt: 2 }}
+
+          {/* ตัวนี้เป็นตัวอัพโหลดไฟล์รูปของสินค้า */}
+          <input
+            type="file"
+            name="productImage"
+            // เมื่ออัพโหลดแล้วรูปที่อัพโหลดจะเข้าไปใน productImage
+            onChange={(e) => setNewProduct({ ...newProduct, productImage: e.target.files[0] })}
+            accept="image/*"
+            style={{ marginTop: '16px' }}
           />
+
           <Box
             sx={{
               mt: 3,
@@ -512,15 +511,18 @@ function EditProduct() {
               justifyContent: "space-between",
             }}
           >
+            {/* เมื่อกด บันทึก handleAddSave จะทำงาน คือการเพิ่มข้อมูล */}
             <Button variant="contained" onClick={handleAddSave}>
               บันทึก
             </Button>
+            {/* เมื่อกด ยกเลิก handleAddClose จะทำงาน คือการปิด Modal เพิ่มข้อมูล */}
             <Button variant="outlined" onClick={handleAddClose}>
               ยกเลิก
             </Button>
           </Box>
         </Box>
       </Modal>
+
 
       {/* Modal(pop up) แก้ไข */}
       <Modal
@@ -566,16 +568,21 @@ function EditProduct() {
             variant="outlined"
             sx={{ mt: 2 }}
           />
-          <TextField
-            margin="normal"
-            fullWidth
-            label="URL รูปสินค้า"
-            name="productimage"
-            value={currentProduct.productimage || ""}
-            onChange={handleChange}
-            variant="outlined"
-            sx={{ mt: 2 }}
+          {/* ตัวนี้เป็นตัวอัพโหลดไฟล์รูปของสินค้า */}
+          <input
+            type="file"
+            name="productImage"
+            onChange={(e) =>
+              setCurrentProduct({
+                ...currentProduct,
+                // เมื่ออัพโหลดแล้วรูปที่อัพโหลดจะเข้าไปใน productImage
+                productImage: e.target.files[0],
+              })
+            }
+            accept="image/*"
+            style={{ marginTop: "16px" }}
           />
+
           <Box
             sx={{
               mt: 3,
@@ -592,6 +599,7 @@ function EditProduct() {
           </Box>
         </Box>
       </Modal>
+
     </>
   );
 }
