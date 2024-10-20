@@ -13,7 +13,7 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import ArticleIcon from "@mui/icons-material/Article";
 import axios from "axios";
 import { useNavigate } from 'react-router-dom';
-import { Box, TextField, Typography, Grid2, Divider } from "@mui/material";
+import { Box, TextField, Typography, Grid2, Divider, Modal } from "@mui/material";
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -193,6 +193,55 @@ function OderUserHistory() {
     }
 
 
+    // ปิด Modal ที่มีรูป slip 
+    const handleClose = () => {
+        setOpen(false);
+    };
+
+    const [openReviewModal, setOpenReviewModal] = useState(false);
+    const [currentBillID, setCurrentBillID] = useState('');
+    const [reviewText, setReviewText] = useState('');
+
+    const handleOpenReviewModal = (billID) => {
+        setCurrentBillID(billID);
+        setOpenReviewModal(true);
+    };
+
+    const handleCloseReviewModal = () => {
+        setOpenReviewModal(false);
+        setReviewText('');
+    };
+
+    const handleSubmitReview = async () => {
+        try {
+            const response = await fetch(`http://localhost:3000/api/orderdetail/${currentBillID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ review: reviewText }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert('ส่งรีวิวเรียบร้อยแล้ว');
+                handleCloseReviewModal(); // ปิด Modal
+                setReviewText(''); // รีเซ็ตค่ารีวิว
+            } else {
+                alert(data.message || 'เกิดข้อผิดพลาดในการส่งรีวิว');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('เกิดข้อผิดพลาดในการส่งรีวิว');
+        }
+    };
+
+
+
+
+
+
     return (
         <>
             <AppBar
@@ -282,7 +331,7 @@ function OderUserHistory() {
                             color: "#FFFFFF",
                         }}
                     >
-                        Order History
+                        Customer Order
                     </Typography>
 
                 </Box>
@@ -307,10 +356,10 @@ function OderUserHistory() {
                         <Grid2 container spacing={2} sx={{ mt: '24px', display: 'flex', flexDirection: 'column' }}>
                             {/* ดึงข้อมูล BillID มาจาก ตัวแปร groupedOrders */}
                             {Object.keys(groupedOrders)
+                                .sort((a, b) => b.localeCompare(a, undefined, { numeric: true })) // เรียงจากมากไปน้อย
+
                                 // ใส่ filter ไว้ ให้ดึงเฉพาะ ข้อมูล order ที่มี ค่า status ไม่เท่ากับ ยกเลิก และ เสร็จสิ้น นอกจากนี้คือดึงมาหมดเลย
                                 .filter(billID => groupedOrders[billID].some(order => order.Status !== 'ยกเลิก' && order.Status !== 'เสร็จสิ้น'))
-                                // ใส่ filter ไว้ ให้ดึงเฉพาะ ข้อมูลที่มี username === cname ใน orderdetail
-                                .filter(billID => groupedOrders[billID][0]?.cname === userInfo.username) // เพิ่มฟิลเตอร์ตรวจสอบ username
                                 // วนลูปการดึงข้อมูล order จาก BillID เดียวกัน
                                 .map((billID) => {
                                     // ฟังก์ชันคำนวณราคารวมของ order ใน BillID เดียวกัน
@@ -352,9 +401,9 @@ function OderUserHistory() {
                                                         </span>
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
-                                                        {/* ดึงข้อมูล DeliveryTime ของ order มาแสดง */}
-                                                        Delivery Time: {order.DeliveryTime || 'ยังไม่มีข้อมูล'}
+                                                        Delivery Time: {order.DeliveryTime ? new Date(order.DeliveryTime).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) : 'ยังไม่มีข้อมูล'}
                                                     </Typography>
+
                                                 </Box>
                                             </Box>
                                             <Divider sx={{ width: '100%' }} />
@@ -397,10 +446,12 @@ function OderUserHistory() {
                                             ))}
 
                                             <Box sx={{ display: 'flex', alignItems: 'center', marginTop: '32px' }}>
+                                                {/* อันนี้เป็น DropDown ของตัว status  */}
+
                                                 <Typography sx={{ marginLeft: 'auto', fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
                                                     ราคารวมทั้งหมด:
                                                     <span style={{ color: 'green', fontWeight: '700' }}>
-                                                        {/* ราคารวมของ order ทั้งหมด */}
+                                                        {/* ราคารวมของ order ทุก order ที่มี BillID เดียวกัน */}
                                                         {totalPrice.toFixed(2)}
                                                     </span>
                                                     บาท
@@ -411,6 +462,7 @@ function OderUserHistory() {
                                             <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: '16px' }}>
                                                 <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>หลักฐานการโอน</Typography>
                                                 <Button
+                                                    // เมื่อคลิ๊กปุ่มนี้ ฟังก์ชั่น handleImageClick จะทำงาน ก็คือ ฟังก์ชั่น ดึงข้อมูล slip มาแสดง
                                                     onClick={() => handleImageClick(slipImage)}
                                                     sx={{
                                                         border: '1px solid #EAAF18',
@@ -522,6 +574,13 @@ function OderUserHistory() {
                                             ))}
 
                                             <Box sx={{ display: 'flex', alignItems: 'center', marginTop: '32px' }}>
+                                                <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
+                                                    รีวิว : &nbsp;
+                                                    <span style={{ color: 'green', fontWeight: '700' }}>
+                                                        {/* ราคารวมของ order ทุก order ที่มี BillID เดียวกัน */}
+                                                        {groupedOrders[billID][0]?.review || 'ยังไม่มีรีวิว'}
+                                                    </span>
+                                                </Typography>
                                                 <Typography sx={{ marginLeft: 'auto', fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
                                                     ราคารวมทั้งหมด:
                                                     <span style={{ color: 'green', fontWeight: '700' }}>
@@ -545,6 +604,21 @@ function OderUserHistory() {
                                                     }}
                                                 >
                                                     Slip
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleOpenReviewModal(billID)} // ฟังก์ชันเปิด Modal
+                                                    sx={{
+                                                        border: '1px solid #EAAF18',
+                                                        height: '30px',
+                                                        color: '#000000',
+                                                        fontWeight: '600',
+                                                        marginTop: '8px',
+                                                        bgcolor: '#EAAF18',
+                                                        width: '10%',
+                                                        ml: 'auto'
+                                                    }}
+                                                >
+                                                    Review
                                                 </Button>
                                             </Box>
                                         </Grid2>
@@ -680,6 +754,59 @@ function OderUserHistory() {
 
                 </CustomTabPanel>
             </Box >
+            {/* Modal สำหรับแสดงรูป Slip */}
+            <Modal
+                // open เมื่อ ตัวแปร open เป็น true ก็คือตอนกดปุ่ม Slip ที่แสดงอยู่ใน Box ของ order แต่ละอัน
+                open={open}
+                // close เมื่อกดปิด หรือ กดที่ไหนก็ได้ที่อยู่นอก Modal นี้
+                onClose={handleClose}
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}
+            >
+                <Box
+                    sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        height: '700px',
+                        width: '500px',
+                        bgcolor: 'background.paper',
+                        padding: 2,
+                    }}
+                >
+                    {/* รูป ดึงมาจากตัวแปร selectedImage จะแสดงรูป Slip ของ BillID ที่กดเปิด slip มา */}
+                    <img
+                        src={selectedImage}
+                        alt="Large Slip"
+                        style={{ maxWidth: '90%', maxHeight: '90%', borderRadius: '8px' }}
+                    />
+                </Box>
+            </Modal>
+
+            <Modal open={openReviewModal} onClose={handleCloseReviewModal}>
+                <Box sx={{ padding: '24px', backgroundColor: 'white', borderRadius: '8px', maxWidth: '400px', margin: 'auto', marginTop: '100px' }}>
+                    <Typography variant="h6" sx={{ marginBottom: '16px' }}>Review</Typography>
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={4}
+                        value={reviewText}
+                        onChange={(e) => setReviewText(e.target.value)}
+                        placeholder="เขียนรีวิวของคุณที่นี่"
+                    />
+                    <Button
+                        onClick={handleSubmitReview}
+                        variant="contained"
+                        sx={{ marginTop: '16px' }}
+                    >
+                        ส่งรีวิว
+                    </Button>
+                </Box>
+            </Modal>
+
         </>
 
 

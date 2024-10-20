@@ -6,14 +6,9 @@ import IconButton from "@mui/material/IconButton";
 import "@fontsource/ibm-plex-sans-thai";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
-import HomeIcon from "@mui/icons-material/Home";
-import ShoppingBasketIcon from "@mui/icons-material/ShoppingBasket";
-import HelpIcon from "@mui/icons-material/Help";
-import PhoneIcon from "@mui/icons-material/Phone";
-import ArticleIcon from "@mui/icons-material/Article";
 import axios from "axios";
 import { useNavigate } from 'react-router-dom';
-import { Box, Grid2, Modal, Select, TextField, Typography } from "@mui/material";
+import { Box, Grid2, Modal, Select, TextField, Typography, Divider } from "@mui/material";
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -41,6 +36,7 @@ const Home = () => {
     const [anchorEl, setAnchorEl] = React.useState(null);
     const open = Boolean(anchorEl);
     const [userAddress, setUserAddress] = useState("");
+    const [services, setServices] = React.useState([]);
 
     // ฟังก์ชั่น จำกัดเวลาการสั่งของลูกค้าให้อยู่ในเวลา 5:00 - 11:00
     const isDeliveryTimeValid = (time) => {
@@ -179,6 +175,19 @@ const Home = () => {
     // กำหนดตัวแปรรูปแบบการทำ
     const [cookType, setCookType] = React.useState("");
 
+    const fetchServices = async () => {
+        try {
+            const response = await axios.get('http://localhost:3000/api/service');
+            setServices(response.data);
+        } catch (error) {
+            console.error('Error fetching services:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchServices();
+    }, []);
+
     // ดึงข้อมูลสินค้ามาโชว์
     useEffect(() => {
         axios.get('http://localhost:3000/api/data')
@@ -288,6 +297,34 @@ const Home = () => {
             alert('เกิดข้อผิดพลาดในการสั่งซื้อ');
         }
     };
+
+    // ตัวแปรเก็บข้อมูล orders คือข้อมูล ตาราง orderdetail 
+    const [orders, setOrders] = useState([]);
+
+    // ดึงข้อมูล order มาแสดง
+    useEffect(() => {
+
+        if (userInfo?.username) {
+            const fetchOrders = async () => {
+                try {
+                    const response = await axios.get(`http://localhost:3000/api/orders?username=${userInfo.username}`);
+                    setOrders(response.data);
+
+                    const initialStatusMap = {};
+                } catch (error) {
+                    console.error("Failed to fetch orders:", error);
+                }
+            };
+            fetchOrders();
+        }
+    }, [userInfo]);
+
+    const uniqueReviews = orders.reduce((acc, order) => {
+        if (!acc[order.BillID]) {
+            acc[order.BillID] = { review: order.review, cname: order.cname }; // เก็บรีวิวและ cname
+        }
+        return acc;
+    }, {});
 
 
 
@@ -461,6 +498,9 @@ const Home = () => {
                             // อันนี้ก็คือเอา ทุกอย่างที่เลือกในหน้า Home ไปใส่ในตัวแปร selectedOptions
                             const options = selectedOptions[product.pid] || { amount: '0.0', cookType: '' };
 
+                            // ค้นหา services ที่ตรงกับ type ของ product
+                            const relatedServices = services.filter(service => service.type === product.type);
+
                             return (
 
                                 <Grid2 item key={product.pid}>
@@ -571,14 +611,14 @@ const Home = () => {
                                         >
 
 
-                                            {/* Select เลือกรูปแบบการทำ */}
+                                            {/* Select สำหรับเลือกบริการที่เกี่ยวข้อง */}
                                             <Select
-                                                value={options.cookType}
+                                                value={options.service}
                                                 onChange={(e) => handleCookTypeChange(product.pid, e)}
                                                 displayEmpty
                                                 renderValue={(selected) => {
                                                     if (!selected) {
-                                                        return <em>เลือกรูปแบบการทำ</em>;
+                                                        return <>เลือกรูปแบบการทำอาหาร</>;
                                                     }
                                                     return selected;
                                                 }}
@@ -590,30 +630,14 @@ const Home = () => {
                                                     bgcolor: 'white'
                                                 }}
                                             >
-                                                {/* ถ้าข้อมูลใน cookType เป็น "" ให้แสดงข้อความว่า เลือกรูปแบบการทำ ซึ่งเรากำหนดค่าเริ่มต้นของ cookType เป็น "" อยู่แล้ว */}
                                                 <MenuItem value="" disabled>
-                                                    เลือกรูปแบบการทำ
+                                                    เลือกรูปแบบการทำอาหาร
                                                 </MenuItem>
-                                                <MenuItem value="ประเภทปลา" disabled>
-                                                    ปลา
-                                                </MenuItem>
-                                                <MenuItem value={'หั่นชิ้น'}>หั่นชิ้น</MenuItem>
-                                                <MenuItem value={'แกะทั้งตัว'}>แกะทั้งตัว</MenuItem>
-                                                <MenuItem value="ประเภทหมึก" disabled>
-                                                    หมึก
-                                                </MenuItem>
-                                                <MenuItem value={'หั่นชิ้น1'}>หั่นชิ้น1</MenuItem>
-                                                <MenuItem value={'แกะทั้งตัว2'}>แกะทั้งตัว2</MenuItem>
-                                                <MenuItem value="ประเภทกุ้ง" disabled>
-                                                    กุ้ง
-                                                </MenuItem>
-                                                <MenuItem value={'หั่นชิ้น3'}>หั่นชิ้น3</MenuItem>
-                                                <MenuItem value={'แกะทั้งตัว4'}>แกะทั้งตัว4</MenuItem>
-                                                <MenuItem value="ประเภทหอย" disabled>
-                                                    หอย
-                                                </MenuItem>
-                                                <MenuItem value={'หั่นชิ้น5'}>หั่นชิ้น5</MenuItem>
-                                                <MenuItem value={'แกะทั้งตัว6'}>แกะทั้งตัว6</MenuItem>
+                                                {relatedServices.map(service => (
+                                                    <MenuItem key={service.id} value={service.service_name}>
+                                                        {service.service_name}
+                                                    </MenuItem>
+                                                ))}
                                             </Select>
 
 
@@ -662,6 +686,26 @@ const Home = () => {
                         })}
                     </Grid2>
                 </Box>
+
+                <Divider sx={{ width: '100%', mt: '24px', mb: '24px' }} />
+                <Box>
+                    <Typography sx={{ fontSize: '24px', fontWeight: '700', fontFamily: 'IBM Plex Sans Thai' }}>
+                        รีวิว
+                    </Typography>
+                </Box>
+
+                <Box sx={{ border: '2px solid green', borderRadius: '10px', padding: '16px', mt: '16px', width: '60%' }}>
+                    {Object.keys(uniqueReviews).map(billID => (
+                        uniqueReviews[billID].review ? ( // ตรวจสอบว่ารีวิวมีค่าหรือไม่
+                            <Typography key={billID} sx={{ fontFamily: 'IBM Plex Sans Thai', fontSize: '18px', color: 'black' }}>
+                                <strong>{uniqueReviews[billID].cname} </strong> {/* แสดง cname */}
+                                <strong>รีวิว : </strong>{uniqueReviews[billID].review} {/* แสดง review */}
+                            </Typography>
+                        ) : null
+                    ))}
+                </Box>
+
+
             </Box>
 
             {/* Modal [popup] ของตะกร้า เมื่อกด รูปตะกร้าบน Appbar ด้านบนขวา ฟังก์ชั่น isCartOpen ทำงาน และ จะปิดเมื่อ handleCartClose ทำงาน */}
@@ -736,7 +780,7 @@ const Home = () => {
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         <img
-                            src="/qrcode.png"
+                            src="/qrcode.jpg"
                             style={{
                                 width: '300px',
                                 height: '300px',

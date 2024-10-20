@@ -17,6 +17,33 @@ import Switch from "@mui/material/Switch";
 import Modal from "@mui/material/Modal";
 import TextField from "@mui/material/TextField";
 import { useNavigate } from 'react-router-dom';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import PropTypes from 'prop-types';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+
+
+function CustomTabPanel(props) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`simple-tabpanel-${index}`}
+      aria-labelledby={`simple-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+    </div>
+  );
+}
+
+CustomTabPanel.propTypes = {
+  children: PropTypes.node,
+  index: PropTypes.number.isRequired,
+  value: PropTypes.number.isRequired,
+};
 
 function EditProduct() {
 
@@ -36,13 +63,18 @@ function EditProduct() {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const navigate = useNavigate();
 
+  // ตัวแปร value เอาไว้เซ็ตค่าของ CustomPanelTab ของ MUI เพื่อจะให้มันเปลี่ยนหน้าไปมาได้
+  const [value, setValue] = React.useState(0);
+
 
   // บันทึกข้อมูลใหม่ลงในตัวแปรนี้ แล้วบันทึกไปใน ฐานข้อมูล
   const [newProduct, setNewProduct] = React.useState({
     menu: '',
     price_per_kg: '',
-    productimage: ''
+    productImage: '',
+    type: '',
   });
+
 
   // เอาไว้เปิดตัว icon avatar
   const handleClick = (event) => {
@@ -53,6 +85,11 @@ function EditProduct() {
     setAnchorEl(null);
   };
 
+  // เอาไว้เปลี่ยนค่าของ value เมื่อกด แถบแสดงสถานะของ order ทั้ง 3
+  const handleTabChange = (event, newValue) => {
+    // โดยจะเซ็ท value ให้ = แถบที่เราคลิกไป
+    setValue(newValue);
+  };
 
   // เมื่อกดเพิ่มข้อมูล จะบันทึกข้อมูลลง ตามคำสั่งที่เขียนไว้ใน server.js ตามลำดับ
   const handleAddChange = (e) => {
@@ -69,6 +106,7 @@ function EditProduct() {
     formData.append('menu', newProduct.menu);
     formData.append('price_per_kg', newProduct.price_per_kg);
     formData.append('productImage', newProduct.productImage); // Add image file
+    formData.append('type', newProduct.type); // เพิ่ม type
 
     axios.post('http://localhost:3000/api/data', formData, {
       headers: {
@@ -84,6 +122,7 @@ function EditProduct() {
         console.error('There was an error adding the product!', error);
       });
   };
+
 
 
   // ดึงข้อมูลมาแสดงตลอด เมื่อมีการเปลี่ยนแปลงของหน้าเว็บ
@@ -134,6 +173,7 @@ function EditProduct() {
     const formData = new FormData();
     formData.append('menu', currentProduct.menu);
     formData.append('price_per_kg', currentProduct.price_per_kg);
+    formData.append('type', currentProduct.type); // เพิ่มฟิลด์ประเภทสินค้า
 
     // ตรวจสอบว่ามีการอัปโหลดรูปใหม่มั้ย
     if (currentProduct.productImage) {
@@ -150,7 +190,6 @@ function EditProduct() {
         setProducts(products.map(product =>
           product.pid === currentProduct.pid ? currentProduct : product
         ));
-        // เมื่อกดอัพเดทแล้ว ดึงข้อมูล Products มาอีกครั้ง จะได้ไม่ต้อง restart หน้าเว็บใหม่ ข้อมูลจะดึงมาเลยตอนเปลี่ยน
         fetchProducts();
         handleClose();
       })
@@ -158,6 +197,7 @@ function EditProduct() {
         console.error("There was an error updating the product!", error);
       });
   };
+
 
   // ฟังก์ชั่นดึงข้อมูลของ Products มาแสดง
   const fetchProducts = async () => {
@@ -195,6 +235,63 @@ function EditProduct() {
   const handleHistoryAdmin = () => {
     navigate('/admin');
   }
+
+  const [services, setServices] = React.useState([]);
+  const [newService, setNewService] = React.useState({ service_name: '', type: '' });
+  const [openAddService, setOpenAddService] = React.useState(false);
+
+  const fetchServices = async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/api/service');
+      setServices(response.data);
+    } catch (error) {
+      console.error('Error fetching services:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const handleAddService = () => {
+    axios.post('http://localhost:3000/api/service', newService)
+      .then(() => {
+        fetchServices(); // ดึงข้อมูลบริการใหม่
+        handleCloseAddService();
+      })
+      .catch(error => {
+        console.error('Error adding service:', error);
+      });
+  };
+
+  const handleDeleteService = (id) => {
+    axios.delete(`http://localhost:3000/api/service/${id}`)
+      .then(() => {
+        fetchServices(); // ดึงข้อมูลบริการใหม่
+      })
+      .catch(error => {
+        console.error('Error deleting service:', error);
+      });
+  };
+
+  const handleEditService = (id, updatedService) => {
+    axios.put(`http://localhost:3000/api/service/${id}`, updatedService)
+      .then(() => {
+        fetchServices(); // ดึงข้อมูลบริการใหม่
+      })
+      .catch(error => {
+        console.error('Error updating service:', error);
+      });
+  };
+
+  const handleServiceChange = (e) => {
+    const { name, value } = e.target;
+    setNewService({ ...newService, [name]: value });
+  };
+
+  const handleCloseAddService = () => {
+    setOpenAddService(false);
+  };
 
 
 
@@ -237,217 +334,258 @@ function EditProduct() {
         </Toolbar>
       </AppBar>
 
-      <Box
-        sx={{
-          bgcolor: "#FFFFFF",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          padding: "24px 0px",
-          justifyContent: 'center'
-        }}
-      >
-
-        <Box
-          sx={{
-            width: "293px",
-            height: "70px",
-            borderRadius: "30px",
-            border: "1px solid #FFFFFF",
-            bgcolor: "#938667",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-
-          <Typography
+      <Box sx={{ width: '100%' }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={value} onChange={handleTabChange} aria-label="basic tabs example">
+            <Tab label="Edit products" />
+            <Tab label="Services" />
+          </Tabs>
+        </Box>
+        <CustomTabPanel value={value} index={0}>
+          <Box
             sx={{
-              fontSize: "32px",
-              fontWeight: "700",
-              fontFamily: "IBM Plex Sans Thai",
-              color: "#FFFFFF",
+              bgcolor: "#FFFFFF",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              padding: "24px 0px",
+              justifyContent: 'center'
             }}
           >
-            แก้ไขข้อมูลสินค้า
-          </Typography>
 
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', mt: '24px', width: '70%', flexDirection: 'column' }}>
-          <Grid2 container spacing={3} sx={{ mx: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            {/* ดึงข้อมูลแบบวนลูป ถ้ามีข้อมูลใน database จะดึงมาแสดงจนกว่าจะครบ */}
-            {products.map((product) => (
+            <Box
+              sx={{
+                width: "293px",
+                height: "70px",
+                borderRadius: "30px",
+                border: "1px solid #FFFFFF",
+                bgcolor: "#938667",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
 
-              <Grid2 item key={product.pid}>
+              <Typography
+                sx={{
+                  fontSize: "32px",
+                  fontWeight: "700",
+                  fontFamily: "IBM Plex Sans Thai",
+                  color: "#FFFFFF",
+                }}
+              >
+                แก้ไขข้อมูลสินค้า
+              </Typography>
 
-                <Box
-                  sx={{
-                    width: "331px",
-                    borderRadius: "30px",
-                    border: "3px solid #EAAF18",
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    padding: '12px 0px',
-                    marginLeft: 'auto',
-                    marginRight: 'auto',
-                    marginTop: '24px',
-                  }}
-                >
-                  {/* Switch and Label */}
-                  <Box
-                    sx={{
-                      width: '100%',
-                      display: 'flex',
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      marginTop: '16px',
-                      marginBottom: '16px'
-                    }}
-                  >
-                    <Typography sx={{ marginLeft: 'auto', marginRight: '12px', fontSize: '16px', fontWeight: '700', fontFamily: 'IBM Plex Sans Thai' }}>
-                      ปิดเมื่อรายการสินค้าหมด
-                    </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: '24px', width: '70%', flexDirection: 'column' }}>
+              <Grid2 container spacing={3} sx={{ mx: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                {/* ดึงข้อมูลแบบวนลูป ถ้ามีข้อมูลใน database จะดึงมาแสดงจนกว่าจะครบ */}
+                {products.map((product) => (
 
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          // ตัวนี้เป็นตัว เช็คว่า ถ้า status = 1 จะเป็นติ๊กเปิดสีฟ้า ถ้า status = 0 จะเป็นติ๊กปิดสีเทา
-                          checked={product.status}
-                          // ฟังก์ชั่นเมื่อคลิกแล้วจะเปลี่ยน status ของตัว product
-                          onChange={(e) => handleStatusChange(e, product.pid)}
-                          name={`status-${product.pid}`}
-                          color="primary"
+                  <Grid2 item key={product.pid}>
+
+                    <Box
+                      sx={{
+                        width: "331px",
+                        borderRadius: "30px",
+                        border: "3px solid #EAAF18",
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        padding: '12px 0px',
+                        marginLeft: 'auto',
+                        marginRight: 'auto',
+                        marginTop: '24px',
+                      }}
+                    >
+                      {/* Switch and Label */}
+                      <Box
+                        sx={{
+                          width: '100%',
+                          display: 'flex',
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          marginTop: '16px',
+                          marginBottom: '16px'
+                        }}
+                      >
+                        <Typography sx={{ marginLeft: 'auto', marginRight: '12px', fontSize: '16px', fontWeight: '700', fontFamily: 'IBM Plex Sans Thai' }}>
+                          ปิดเมื่อรายการสินค้าหมด
+                        </Typography>
+
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              // ตัวนี้เป็นตัว เช็คว่า ถ้า status = 1 จะเป็นติ๊กเปิดสีฟ้า ถ้า status = 0 จะเป็นติ๊กปิดสีเทา
+                              checked={product.status}
+                              // ฟังก์ชั่นเมื่อคลิกแล้วจะเปลี่ยน status ของตัว product
+                              onChange={(e) => handleStatusChange(e, product.pid)}
+                              name={`status-${product.pid}`}
+                              color="primary"
+                            />
+                          }
+                          // ข้อความข้างหลัง switch ถ้า status === 1 จะแสดง เปิด ถ้าไม่ใช่ จะแสดง ปิด
+                          label={product.status === 1 ? "เปิด" : "ปิด"}
                         />
-                      }
-                      // ข้อความข้างหลัง switch ถ้า status === 1 จะแสดง เปิด ถ้าไม่ใช่ จะแสดง ปิด
-                      label={product.status === 1 ? "เปิด" : "ปิด"}
-                    />
 
-                  </Box>
+                      </Box>
 
-                  {/* Product Image */}
-                  <Box
-                    sx={{
-                      width: "300px",
-                      height: "200px",
-                    }}
-                  >
-                    <img
-                      // ดึงข้อมูล productimage มาแสดง
-                      src={product.productimage}
-                      alt={product.menu}
-                      style={{ width: '100%', height: '100%', borderRadius: '10px' }}
-                    />
-                  </Box>
+                      {/* Product Image */}
+                      <Box
+                        sx={{
+                          width: "300px",
+                          height: "200px",
+                        }}
+                      >
+                        <img
+                          // ดึงข้อมูล productimage มาแสดง
+                          src={product.productimage}
+                          alt={product.menu}
+                          style={{ width: '100%', height: '100%', borderRadius: '10px' }}
+                        />
+                      </Box>
 
-                  {/* Product Menu */}
-                  <Typography
-                    sx={{
-                      fontSize: '24px',
-                      fontWeight: '700',
-                      color: '#938667',
-                      fontFamily: 'IBM Plex Sans Thai',
-                      marginTop: '8px'
-                    }}
-                  >
-                    {/* ดึงข้อมูล productmenu มาแสดง */}
-                    {product.menu}
-                  </Typography>
+                      {/* Product Menu */}
+                      <Typography
+                        sx={{
+                          fontSize: '24px',
+                          fontWeight: '700',
+                          color: '#938667',
+                          fontFamily: 'IBM Plex Sans Thai',
+                          marginTop: '8px'
+                        }}
+                      >
+                        {/* ดึงข้อมูล productmenu มาแสดง */}
+                        {product.menu} ({product.type})
+                      </Typography>
 
-                  {/* Product Price */}
-                  <Typography
-                    sx={{
-                      fontSize: '24px',
-                      fontWeight: '400',
-                      color: '#EAAF18',
-                      fontFamily: 'IBM Plex Sans Thai',
-                      marginTop: '8px'
-                    }}
-                  >
-                    {/* ดึงข้อมูล ราคาต่อกิโล มาแสดง */}
-                    {product.price_per_kg} บาท / กิโลกรัม
-                  </Typography>
+                      {/* Product Price */}
+                      <Typography
+                        sx={{
+                          fontSize: '24px',
+                          fontWeight: '400',
+                          color: '#EAAF18',
+                          fontFamily: 'IBM Plex Sans Thai',
+                          marginTop: '8px'
+                        }}
+                      >
+                        {/* ดึงข้อมูล ราคาต่อกิโล มาแสดง */}
+                        {product.price_per_kg} บาท / กิโลกรัม
+                      </Typography>
 
-                  {/* Buttons */}
-                  <Box
-                    sx={{
-                      width: '100%',
-                      display: 'flex',
-                      flexDirection: 'row',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginTop: '16px'
-                    }}
-                  >
-                    <Button
-                      variant="contained"
-                      sx={{
-                        width: '87px',
-                        height: '44px',
-                        bgcolor: '#FF0000',
-                        border: '1px solid #524B38',
-                        fontSize: '18px',
-                        fontWeight: '700',
-                        color: '#FFFFFF',
-                        fontFamily: "IBM Plex Sans Thai",
-                        borderRadius: '10px'
-                      }}
-                      // เมื่อคลิกจะลบข้อมูลของ pid นั้นๆ ใน Box สินค้าที่เราคลิก
-                      onClick={() => handleDelete(product.pid)}
-                    >
-                      ลบ
-                    </Button>
+                      {/* Buttons */}
+                      <Box
+                        sx={{
+                          width: '100%',
+                          display: 'flex',
+                          flexDirection: 'row',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          marginTop: '16px'
+                        }}
+                      >
+                        <Button
+                          variant="contained"
+                          sx={{
+                            width: '87px',
+                            height: '44px',
+                            bgcolor: '#FF0000',
+                            border: '1px solid #524B38',
+                            fontSize: '18px',
+                            fontWeight: '700',
+                            color: '#FFFFFF',
+                            fontFamily: "IBM Plex Sans Thai",
+                            borderRadius: '10px'
+                          }}
+                          // เมื่อคลิกจะลบข้อมูลของ pid นั้นๆ ใน Box สินค้าที่เราคลิก
+                          onClick={() => handleDelete(product.pid)}
+                        >
+                          ลบ
+                        </Button>
 
-                    <Button
-                      sx={{
-                        width: '87px',
-                        height: '44px',
-                        bgcolor: '#EAAF18',
-                        border: '1px solid #524B38',
-                        fontSize: '18px',
-                        fontWeight: '700',
-                        color: '#FFFFFF',
-                        ml: '24px',
-                        fontFamily: "IBM Plex Sans Thai",
-                        borderRadius: '10px'
-                      }}
-                      // เมื่อคลิกจะแก้ไข โดยดึงข้อมูลของ product ตัวที่เราคลิกมา
-                      onClick={() => handleEdit(product)}
-                    >
-                      แก้ไข
-                    </Button>
+                        <Button
+                          sx={{
+                            width: '87px',
+                            height: '44px',
+                            bgcolor: '#EAAF18',
+                            border: '1px solid #524B38',
+                            fontSize: '18px',
+                            fontWeight: '700',
+                            color: '#FFFFFF',
+                            ml: '24px',
+                            fontFamily: "IBM Plex Sans Thai",
+                            borderRadius: '10px'
+                          }}
+                          // เมื่อคลิกจะแก้ไข โดยดึงข้อมูลของ product ตัวที่เราคลิกมา
+                          onClick={() => handleEdit(product)}
+                        >
+                          แก้ไข
+                        </Button>
 
-                  </Box>
+                      </Box>
 
-                </Box>
+                    </Box>
+                  </Grid2>
+                ))}
               </Grid2>
-            ))}
-          </Grid2>
 
-          {/* ปุ่มเพิ่มสินค้า */}
-          <Button
-            variant="contained"
-            sx={{
-              width: "293px",
-              height: "70px",
-              borderRadius: "30px",
-              border: "1px solid #FFFFFF",
-              fontSize: "32px",
-              fontWeight: "700",
-              fontFamily: "IBM Plex Sans Thai",
-              color: "#FFFFFF",
-              marginTop: '24px'
-            }}
-            // เมื่อคลิกจะขึ้น Modal มาให้เพิ่มข้อมูลสินค้า
-            onClick={handleAddOpen}
-          >
-            เพิ่มข้อมูล
-          </Button>
-        </Box>
+              {/* ปุ่มเพิ่มสินค้า */}
+              <Button
+                variant="contained"
+                sx={{
+                  width: "293px",
+                  height: "70px",
+                  borderRadius: "30px",
+                  border: "1px solid #FFFFFF",
+                  fontSize: "32px",
+                  fontWeight: "700",
+                  fontFamily: "IBM Plex Sans Thai",
+                  color: "#FFFFFF",
+                  marginTop: '24px'
+                }}
+                // เมื่อคลิกจะขึ้น Modal มาให้เพิ่มข้อมูลสินค้า
+                onClick={handleAddOpen}
+              >
+                เพิ่มข้อมูล
+              </Button>
+            </Box>
+          </Box>
+        </CustomTabPanel>
+        <CustomTabPanel value={value} index={1}>
+          <Button variant="contained" onClick={() => setOpenAddService(true)}>Add Service</Button>
+
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Service Name</TableCell>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {services.map((service) => (
+                  <TableRow key={service.id}>
+                    <TableCell>{service.service_name}</TableCell>
+                    <TableCell>{service.type}</TableCell>
+                    <TableCell>
+                      {/* ปุ่มแก้ไขและลบบริการ */}
+                      <Button onClick={() => handleEditService(service.id, service)}>Edit</Button>
+                      <Button onClick={() => handleDeleteService(service.id)}>Delete</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CustomTabPanel>
       </Box>
 
+
+
+      {/* Modal(pop up) เพิ่มข้อมูลสินค้า */}
       {/* Modal(pop up) เพิ่มข้อมูลสินค้า */}
       <Modal
         open={openAdd}
@@ -494,11 +632,25 @@ function EditProduct() {
             sx={{ mt: 2 }}
           />
 
+          {/* Dropdown สำหรับเลือกประเภทสินค้า */}
+          <select
+            name="type"
+            value={newProduct.type}
+            onChange={handleAddChange}
+            style={{ marginTop: '16px', width: '100%', padding: '8px' }}
+          >
+            <option value="">เลือกประเภทสินค้า</option>
+            <option value="กุ้ง">กุ้ง</option>
+            <option value="หอย">หอย</option>
+            <option value="ปู">ปู</option>
+            <option value="ปลา">ปลา</option>
+            <option value="หมึก">หมึก</option>
+          </select>
+
           {/* ตัวนี้เป็นตัวอัพโหลดไฟล์รูปของสินค้า */}
           <input
             type="file"
             name="productImage"
-            // เมื่ออัพโหลดแล้วรูปที่อัพโหลดจะเข้าไปใน productImage
             onChange={(e) => setNewProduct({ ...newProduct, productImage: e.target.files[0] })}
             accept="image/*"
             style={{ marginTop: '16px' }}
@@ -511,17 +663,16 @@ function EditProduct() {
               justifyContent: "space-between",
             }}
           >
-            {/* เมื่อกด บันทึก handleAddSave จะทำงาน คือการเพิ่มข้อมูล */}
             <Button variant="contained" onClick={handleAddSave}>
               บันทึก
             </Button>
-            {/* เมื่อกด ยกเลิก handleAddClose จะทำงาน คือการปิด Modal เพิ่มข้อมูล */}
             <Button variant="outlined" onClick={handleAddClose}>
               ยกเลิก
             </Button>
           </Box>
         </Box>
       </Modal>
+
 
 
       {/* Modal(pop up) แก้ไข */}
@@ -568,6 +719,22 @@ function EditProduct() {
             variant="outlined"
             sx={{ mt: 2 }}
           />
+
+          {/* Dropdown สำหรับเลือกประเภทสินค้า */}
+          <select
+            name="type"
+            value={currentProduct.type || ""}
+            onChange={handleChange}
+            style={{ marginTop: '16px', width: '100%', padding: '8px' }}
+          >
+            <option value="">เลือกประเภทสินค้า</option>
+            <option value="กุ้ง">กุ้ง</option>
+            <option value="หอย">หอย</option>
+            <option value="ปู">ปู</option>
+            <option value="ปลา">ปลา</option>
+            <option value="หมึก">หมึก</option>
+          </select>
+
           {/* ตัวนี้เป็นตัวอัพโหลดไฟล์รูปของสินค้า */}
           <input
             type="file"
@@ -575,7 +742,6 @@ function EditProduct() {
             onChange={(e) =>
               setCurrentProduct({
                 ...currentProduct,
-                // เมื่ออัพโหลดแล้วรูปที่อัพโหลดจะเข้าไปใน productImage
                 productImage: e.target.files[0],
               })
             }
@@ -597,6 +763,45 @@ function EditProduct() {
               ยกเลิก
             </Button>
           </Box>
+        </Box>
+      </Modal>
+
+
+      {/* Modal สำหรับเพิ่มService */}
+      <Modal
+        open={openAddService}
+        onClose={handleCloseAddService}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '200px',
+            width: '500px',
+            bgcolor: 'background.paper',
+            padding: 2,
+            borderRadius: '20px'
+          }}
+        >
+          <TextField
+            label="ชื่อบริการ"
+            name="service_name"
+            value={newService.service_name}
+            onChange={handleServiceChange}
+          />
+          <TextField
+            label="ประเภท"
+            name="type"
+            value={newService.type}
+            onChange={handleServiceChange}
+          />
+          <Button onClick={handleAddService}>บันทึก</Button>
         </Box>
       </Modal>
 

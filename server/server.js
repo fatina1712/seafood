@@ -163,21 +163,22 @@ app.get('/api/data', (req, res) => {
 
 // เพิ่มข้อมูล product
 app.post('/api/data', upload.single('productImage'), (req, res) => {
-  const { menu, price_per_kg, status } = req.body; // Extract status from body
+  const { menu, price_per_kg, status, type } = req.body; // Extract type from body
   const productImage = req.file ? req.file.filename : null;
   const imageUrl = productImage ? `http://localhost:3000/uploads/${productImage}` : null;
 
-  const sql = 'INSERT INTO product (menu, price_per_kg, productimage, status) VALUES (?, ?, ?, ?)';
-  db.query(sql, [menu, price_per_kg, imageUrl, status || true], (err, result) => { // Default status to true if not provided
+  const sql = 'INSERT INTO product (menu, price_per_kg, productimage, status, type) VALUES (?, ?, ?, ?, ?)';
+  db.query(sql, [menu, price_per_kg, imageUrl, status || true, type], (err, result) => { // Include type in the insert query
     if (err) {
       return res.status(500).send(err);
     }
     res.json({
       message: 'Product added successfully',
-      product: { menu, price_per_kg, productimage: imageUrl, status },
+      product: { menu, price_per_kg, productimage: imageUrl, status, type }, // Include type in response
     });
   });
 });
+
 
 // แก้ไขข้อมูล status ของ product เอาไว้ ปิด เปิด สินค้าเมื่อหมด
 app.put('/api/product/:pid/status', (req, res) => {
@@ -201,6 +202,7 @@ app.put('/api/product/:pid/status', (req, res) => {
   });
 });
 
+
 // ลบข้อมูล
 app.delete('/api/data/:id', (req, res) => {
   const id = req.params.id;
@@ -215,24 +217,22 @@ app.delete('/api/data/:id', (req, res) => {
 });
 
 // แก้ไขข้อมูลพร้อมอัปเดตรูปภาพ
-app.put('/api/data/:id', upload.single('productImage'), (req, res) => {
-  const id = req.params.id;
-  const { menu, price_per_kg } = req.body;
-
-  // ตรวจสอบว่ามีการอัปโหลดไฟล์รูปใหม่หรือไม่
+app.put('/api/data/:pid', upload.single('productImage'), (req, res) => {
+  const { pid } = req.params;
+  const { menu, price_per_kg, type } = req.body;  // รวมฟิลด์ type
   const productImage = req.file ? req.file.filename : null;
-  const imageUrl = productImage ? `http://localhost:3000/uploads/${productImage}` : req.body.productimage;
+  const imageUrl = productImage ? `http://localhost:3000/uploads/${productImage}` : null;  // ใช้ backticks สำหรับ Template Literal
 
-  // ตรวจสอบว่า imageUrl ได้รับค่าใหม่หรือไม่
-  console.log('Image URL:', imageUrl);
-
-  const sql = 'UPDATE product SET menu = ?, price_per_kg = ?, productimage = ? WHERE pid = ?';
-  db.query(sql, [menu, price_per_kg, imageUrl, id], (err, result) => {
+  const sql = 'UPDATE product SET menu = ?, price_per_kg = ?, productimage = ?, type = ? WHERE pid = ?';
+  db.query(sql, [menu, price_per_kg, imageUrl, type, pid], (err, result) => {
     if (err) {
-      res.status(500).send(err);
-      return;
+      console.error('Error updating product:', err);
+      return res.status(500).send(err);
     }
-    res.json({ message: 'Product updated successfully', product: { menu, price_per_kg, productimage: imageUrl } });
+    res.json({
+      message: 'Product updated successfully',
+      product: { menu, price_per_kg, productimage: imageUrl, type },  // ตอบกลับพร้อมข้อมูลที่อัปเดต
+    });
   });
 });
 
@@ -261,63 +261,76 @@ app.post('/api/order', upload.single('slipImage'), (req, res) => {
   const orders = JSON.parse(req.body.orders); // ดึงข้อมูลการสั่งซื้อจาก body
   const slipImage = req.file ? req.file.filename : null; // ไฟล์รูปที่อัปโหลด
   const deliveryTime = req.body.deliveryTime; // ดึงเวลาการจัดส่ง
-  const BillID = Date.now(); // สร้าง BillID
 
   // สร้าง URL สำหรับ SlipImage
   const slipImageUrl = slipImage ? `http://localhost:3000/uploads/${slipImage}` : null;
 
-  db.beginTransaction((err) => {
+  // ดึง BillID ล่าสุดจากฐานข้อมูล
+  db.query('SELECT MAX(BillID) AS maxBillID FROM orderdetail', (err, result) => {
     if (err) {
-      console.error('Transaction error:', err);
-      return res.status(500).json({ error: 'Transaction error: ' + err });
+      console.error('Error fetching max BillID:', err);
+      return res.status(500).json({ error: 'Error fetching max BillID: ' + err });
     }
 
-    const orderPromises = orders.map((order) => {
-      const { PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status } = order;
+    // ตรวจสอบว่า BillID มีหรือไม่ ถ้าไม่มีให้เริ่มที่ 1
+    const maxBillID = result[0].maxBillID ? parseInt(result[0].maxBillID) : 0;
+    const newBillID = (maxBillID + 1).toString().padStart(5, '0'); // ฟอร์แมตให้เป็น 5 หลัก เช่น 00001
 
-      const query = `
-    INSERT INTO orderdetail (BillID, PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status, SlipImage, DeliveryTime)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`;
+    // เริ่ม transaction
+    db.beginTransaction((err) => {
+      if (err) {
+        console.error('Transaction error:', err);
+        return res.status(500).json({ error: 'Transaction error: ' + err });
+      }
 
+      const orderPromises = orders.map((order) => {
+        const { PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status } = order;
 
-      return new Promise((resolve, reject) => {
-        db.query(query, [BillID, PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status, slipImageUrl, deliveryTime], (error, results) => {
-          if (error) {
-            console.error('Query error:', error);
-            return reject(error);
-          }
-          resolve(results);
+        const query = `
+          INSERT INTO orderdetail (BillID, PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status, SlipImage, DeliveryTime)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        return new Promise((resolve, reject) => {
+          db.query(query, [newBillID, PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status, slipImageUrl, deliveryTime], (error, results) => {
+            if (error) {
+              console.error('Query error:', error);
+              return reject(error);
+            }
+            resolve(results);
+          });
         });
       });
+
+      // รอให้การ insert ทั้งหมดเสร็จสิ้น
+      Promise.all(orderPromises)
+        .then(() => {
+          db.commit((err) => {
+            if (err) {
+              console.error('Commit error:', err);
+              return db.rollback(() => {
+                res.status(500).json({ error: 'Transaction commit error: ' + err });
+              });
+            }
+            res.status(200).json({ message: 'Orders placed successfully', BillID: newBillID });
+          });
+        })
+        .catch((error) => {
+          console.error('Error inserting order:', error);
+          db.rollback(() => {
+            res.status(500).json({ error: 'Error inserting order: ' + error });
+          });
+        });
     });
-
-    Promise.all(orderPromises)
-      .then(() => {
-        db.commit((err) => {
-          if (err) {
-            console.error('Commit error:', err);
-            return db.rollback(() => {
-              res.status(500).json({ error: 'Transaction commit error: ' + err });
-            });
-          }
-          res.status(200).json({ message: 'Orders placed successfully', BillID });
-        });
-      })
-      .catch((error) => {
-        console.error('Error inserting order:', error);
-        db.rollback(() => {
-          res.status(500).json({ error: 'Error inserting order: ' + error });
-        });
-      });
   });
 });
 
 
 
+
 // ดึงข้อมูล orderdetail มาแสดง
 app.get('/api/orders', (req, res) => {
-  const sql = 'SELECT BillID, PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status, DeliveryTime, SlipImage FROM orderdetail';
+  const sql = 'SELECT BillID, PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status, DeliveryTime, SlipImage, review FROM orderdetail';
   db.query(sql, (err, result) => {
     if (err) {
       res.status(500).send(err);
@@ -343,6 +356,79 @@ app.put('/api/orders/:id', authenticateToken, (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
     res.json({ message: 'Order status updated successfully' });
+  });
+});
+
+// เพิ่มบริการ
+app.post('/api/service', (req, res) => {
+  const { service_name, type } = req.body;
+
+  const sql = 'INSERT INTO service (service_name, type) VALUES (?, ?)';
+  db.query(sql, [service_name, type], (err, result) => {
+    if (err) {
+      return res.status(500).send(err);
+    }
+    res.json({
+      message: 'Service added successfully',
+      service: { service_name, type },
+    });
+  });
+});
+
+// ลบบริการ
+app.delete('/api/service/:id', (req, res) => {
+  const id = req.params.id;
+  const sql = 'DELETE FROM service WHERE id = ?';
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      return res.status(500).send(err);
+    }
+    res.json({ message: 'Service deleted successfully' });
+  });
+});
+
+// แก้ไขบริการ
+app.put('/api/service/:id', (req, res) => {
+  const id = req.params.id;
+  const { service_name, type } = req.body;
+
+  const sql = 'UPDATE service SET service_name = ?, type = ? WHERE id = ?';
+  db.query(sql, [service_name, type, id], (err, result) => {
+    if (err) {
+      return res.status(500).send(err);
+    }
+    res.json({
+      message: 'Service updated successfully',
+      service: { service_name, type },
+    });
+  });
+});
+
+// ดึงข้อมูลบริการ
+app.get('/api/service', (req, res) => {
+  const sql = 'SELECT * FROM service';
+  db.query(sql, (err, results) => {
+    if (err) {
+      return res.status(500).send(err);
+    }
+    res.json(results);
+  });
+});
+
+app.put('/api/orderdetail/:billID', (req, res) => {
+  const { billID } = req.params;
+  const { review } = req.body;
+
+  const sql = 'UPDATE orderdetail SET review = ? WHERE BillID = ?';
+  db.query(sql, [review, billID], (err, result) => {
+    if (err) {
+      console.error('Error updating review:', err);
+      return res.status(500).json({ message: 'Database error' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'ไม่พบ BillID ที่ระบุ' });
+    }
+    res.json({ message: 'รีวิวถูกอัปเดตเรียบร้อยแล้ว' });
   });
 });
 

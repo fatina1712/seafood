@@ -9,6 +9,9 @@ import PropTypes from 'prop-types';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EditProduct from "./editproduct";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TextField } from '@mui/material';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css'; // นำเข้าความสวยงามของ DatePicker
 
 // ฟังก์ชั่น CustomTabPanel ของ Material UI [MUI]
 function CustomTabPanel(props) {
@@ -57,6 +60,11 @@ function Admin() {
         setOpen(true);
     };
 
+    // ฟังก์ชั่น navigate ไปยังหน้า Edit
+    const handleEditPage = () => {
+        navigate('/editproduct');
+    }
+
     // ปิด Modal ที่มีรูป slip 
     const handleClose = () => {
         setOpen(false);
@@ -88,6 +96,7 @@ function Admin() {
 
     // ดึงข้อมูล order มาแสดง
     useEffect(() => {
+
         if (userInfo?.username) {
             const fetchOrders = async () => {
                 try {
@@ -136,14 +145,153 @@ function Admin() {
         }
     };
 
+    const [services, setServices] = React.useState([]);
+    const [newService, setNewService] = React.useState({ service_name: '', type: '' });
+    const [openAddService, setOpenAddService] = React.useState(false);
+
+    const fetchServices = async () => {
+        try {
+            const response = await axios.get('http://localhost:3000/api/service');
+            setServices(response.data);
+        } catch (error) {
+            console.error('Error fetching services:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchServices();
+    }, []);
+
+    const handleAddService = () => {
+        axios.post('http://localhost:3000/api/service', newService)
+            .then(() => {
+                fetchServices(); // ดึงข้อมูลบริการใหม่
+                handleCloseAddService();
+            })
+            .catch(error => {
+                console.error('Error adding service:', error);
+            });
+    };
+
+    const handleDeleteService = (id) => {
+        axios.delete(`http://localhost:3000/api/service/${id}`)
+            .then(() => {
+                fetchServices(); // ดึงข้อมูลบริการใหม่
+            })
+            .catch(error => {
+                console.error('Error deleting service:', error);
+            });
+    };
+
+    const handleEditService = (id, updatedService) => {
+        axios.put(`http://localhost:3000/api/service/${id}`, updatedService)
+            .then(() => {
+                fetchServices(); // ดึงข้อมูลบริการใหม่
+            })
+            .catch(error => {
+                console.error('Error updating service:', error);
+            });
+    };
+
+    const handleServiceChange = (e) => {
+        const { name, value } = e.target;
+        setNewService({ ...newService, [name]: value });
+    };
+
+    const handleCloseAddService = () => {
+        setOpenAddService(false);
+    };
+
+    const calculateTotals = (startDate, endDate) => {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0); // ตั้งค่าเวลาเป็น 00:00:00
+        const end = new Date(endDate);
+        end.setHours(0, 0, 0, 0); // ตั้งค่าเวลาเป็น 00:00:00
+
+        let totalToday = 0;
+        let totalLast7Days = 0; // ยอดเงินย้อนหลัง 7 วัน
+        let totalThisDay = 0; // ยอดเงินวันนี้
+
+        // คำนวณยอดเงินย้อนหลัง 7 วัน
+        for (let i = 0; i < 7; i++) {
+            const dateToCheck = new Date();
+            dateToCheck.setDate(dateToCheck.getDate() - i);
+            dateToCheck.setHours(0, 0, 0, 0);
+
+            let dailyTotal = 0; // ยอดเงินในวันนั้น
+
+            Object.keys(groupedOrders).forEach(billID => {
+                groupedOrders[billID].forEach(order => {
+                    const orderDate = new Date(order.DeliveryTime);
+                    orderDate.setHours(0, 0, 0, 0);
+
+                    if (order.Status === 'เสร็จสิ้น') {
+                        // เช็คว่าอยู่ในช่วงวันที่เลือก
+                        if (orderDate >= start && orderDate <= end) {
+                            dailyTotal += parseFloat(order.Price);
+                        }
+                    }
+                });
+            });
+
+            totalLast7Days += dailyTotal;
+
+            // เช็คยอดวันนี้
+            if (dateToCheck.getTime() === start.getTime()) {
+                totalToday = dailyTotal;
+            }
+        }
+
+        // คำนวณยอดเงินเฉพาะวันนี้
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        Object.keys(groupedOrders).forEach(billID => {
+            groupedOrders[billID].forEach(order => {
+                const orderDate = new Date(order.DeliveryTime);
+                orderDate.setHours(0, 0, 0, 0);
+
+                if (order.Status === 'เสร็จสิ้น' && orderDate.getTime() === today.getTime()) {
+                    totalThisDay += parseFloat(order.Price);
+                }
+            });
+        });
+
+        return { totalToday, totalThisDay, totalLast7Days };
+    };
+
+    const [selectedStartDate, setSelectedStartDate] = useState(new Date()); // วันที่เลือกเริ่มต้น
+    const [selectedEndDate, setSelectedEndDate] = useState(new Date()); // วันที่เลือกสิ้นสุด
+    const [totalAmount, setTotalAmount] = useState({ totalToday: 0, totalThisDay: 0, totalLast7Days: 0 });
+
+    // ฟังก์ชันคำนวณยอดเงินในช่วงวันที่เลือก
+    const calculateAmountForSelectedDates = () => {
+        const amount = calculateTotals(selectedStartDate, selectedEndDate); // ใช้วันที่ที่เลือกในการคำนวณยอดเงิน
+        setTotalAmount(amount);
+    };
+
+    useEffect(() => {
+        const amount = calculateTotals(selectedStartDate, selectedEndDate);
+        // อัปเดต state เฉพาะเมื่อค่าที่คำนวณได้เปลี่ยนแปลง
+        if (
+            amount.totalToday !== totalAmount.totalToday || 
+            amount.totalThisDay !== totalAmount.totalThisDay || 
+            amount.totalLast7Days !== totalAmount.totalLast7Days
+        ) {
+            setTotalAmount(amount);
+        }
+    }, [groupedOrders, selectedStartDate, selectedEndDate]); // รวม dependency ทั้งหมด
+    
 
 
     return (
         <>
             <img
+                onClick={handleEditPage}
                 src="/กรอบบนสุด.png"
-                style={{ width: '100%' }}
+                style={{ width: '100%', cursor: 'pointer' }}
             />
+
             <Box sx={{ width: '100%' }}>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                     <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
@@ -157,6 +305,7 @@ function Admin() {
                         <Grid2 container spacing={2} sx={{ mt: '24px', display: 'flex', flexDirection: 'column' }}>
                             {/* ดึงข้อมูล BillID มาจาก ตัวแปร groupedOrders */}
                             {Object.keys(groupedOrders)
+                                .sort((a, b) => b.localeCompare(a, undefined, { numeric: true })) // เรียงจากมากไปน้อย
 
                                 // ใส่ filter ไว้ ให้ดึงเฉพาะ ข้อมูล order ที่มี ค่า status ไม่เท่ากับ ยกเลิก และ เสร็จสิ้น นอกจากนี้คือดึงมาหมดเลย
                                 .filter(billID => groupedOrders[billID].some(order => order.Status !== 'ยกเลิก' && order.Status !== 'เสร็จสิ้น'))
@@ -201,14 +350,14 @@ function Admin() {
                                                         </span>
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
-                                                        {/* ดึงข้อมูล DeliveryTime ของ order มาแสดง */}
-                                                        Delivery Time: {order.DeliveryTime || 'ยังไม่มีข้อมูล'}
+                                                        Delivery Time: {order.DeliveryTime ? new Date(order.DeliveryTime).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) : 'ยังไม่มีข้อมูล'}
                                                     </Typography>
+
                                                 </Box>
                                             </Box>
                                             <Divider sx={{ width: '100%' }} />
 
-                                            {/* ฟังก์ชั่นนี้เป็นการดึงข้อมูลแบบ loop ถ้า order นี้มี 2 สินค้า ก็จะ loop 2 ครั้ง โดยจะดึงจาก BillID เดียวกัน */}                                            
+                                            {/* ฟังก์ชั่นนี้เป็นการดึงข้อมูลแบบ loop ถ้า order นี้มี 2 สินค้า ก็จะ loop 2 ครั้ง โดยจะดึงจาก BillID เดียวกัน */}
                                             {groupedOrders[billID].map((order, index) => (
                                                 <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
                                                     <Box>
@@ -296,14 +445,55 @@ function Admin() {
                                 })}
                         </Grid2>
                     </Box>
-
                 </CustomTabPanel>
                 <CustomTabPanel value={value} index={1}>
                     <Box sx={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+                        <Box sx={{ border: '2px solid green', borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <DatePicker
+                                    selected={selectedStartDate}
+                                    onChange={(date) => {
+                                        setSelectedStartDate(date);
+                                    }}
+                                    dateFormat="dd/MM/yyyy"
+                                    isClearable
+                                    placeholderText="เลือกวันที่เริ่มต้น"
+                                />
+                                <Typography>ยอดเงินวันที่เลือก: {totalAmount.totalToday.toFixed(2) || 0} บาท</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <DatePicker
+                                    selected={selectedEndDate}
+                                    onChange={(date) => {
+                                        setSelectedEndDate(date);
+                                    }}
+                                    dateFormat="dd/MM/yyyy"
+                                    isClearable
+                                    placeholderText="เลือกวันที่สิ้นสุด"
+                                />
+                                <Typography>ยอดเงินวันนี้: {totalAmount.totalThisDay.toFixed(2) || 0} บาท</Typography>
+                            </Box>
+                        </Box>
+
+
                         <Grid2 container spacing={2} sx={{ mt: '24px', display: 'flex', flexDirection: 'column' }}>
                             {Object.keys(groupedOrders)
                                 // ใส่ filter ไว้ ให้ดึงเฉพาะ ข้อมูล order ที่มี ค่า status เท่ากับ เสร็จสิ้น
                                 .filter(billID => groupedOrders[billID].some(order => order.Status === 'เสร็จสิ้น'))
+                                .filter(billID => {
+                                    return groupedOrders[billID].some(order => {
+                                        const orderDate = new Date(order.DeliveryTime);
+                                        orderDate.setHours(0, 0, 0, 0); // ตั้งค่าเวลาให้เป็น 00:00:00
+                                        const startDate = new Date(selectedStartDate);
+                                        startDate.setHours(0, 0, 0, 0); // ตั้งค่าเวลาให้เป็น 00:00:00
+                                        const endDate = new Date(selectedEndDate);
+                                        endDate.setHours(23, 59, 59, 999); // ตั้งค่าเวลาให้เป็น 23:59:59 เพื่อให้รวมวันที่สุดท้ายได้
+
+                                        return orderDate >= startDate && orderDate <= endDate;
+                                    });
+                                })
+                                .sort((a, b) => b.localeCompare(a, undefined, { numeric: true })) // เรียงจากมากไปน้อย
+
                                 // วนลูปการดึงข้อมูล order จาก BillID เดียวกัน
                                 .map((billID) => {
                                     // ฟังก์ชันคำนวณราคารวมของ order ใน BillID เดียวกัน
@@ -344,12 +534,12 @@ function Admin() {
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
                                                         {/* ดึงข้อมูล DeliveryTime ของ order มาแสดง */}
-                                                        Delivery Time: {order.DeliveryTime}
+                                                        Delivery Time: {order.DeliveryTime ? new Date(order.DeliveryTime).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) : 'ยังไม่มีข้อมูล'}
                                                     </Typography>
                                                 </Box>
                                             </Box>
 
-                                            {/* ฟังก์ชั่นนี้เป็นการดึงข้อมูลแบบ loop ถ้า order นี้มี 2 สินค้า ก็จะ loop 2 ครั้ง โดยจะดึงจาก BillID เดียวกัน */}
+                                            {/* ฟังก์ชันนี้เป็นการดึงข้อมูลแบบ loop ถ้า order นี้มี 2 สินค้า ก็จะ loop 2 ครั้ง โดยจะดึงจาก BillID เดียวกัน */}
                                             {groupedOrders[billID].map((order, index) => (
                                                 <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
                                                     <Box>
@@ -365,11 +555,9 @@ function Admin() {
                                                                 {order.Service}
                                                             </span>
                                                         </Typography>
-
                                                     </Box>
                                                     <Box>
                                                         <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>ราคา: &nbsp;
-
                                                             <span style={{ color: '#7E481E' }}>
                                                                 {/* ดึงข้อมูลราคาของ menu นั้นๆ ของ order มาแสดง */}
                                                                 {order.Price}
@@ -381,12 +569,18 @@ function Admin() {
                                                                 {order.Amount_per_kg}
                                                             </span>
                                                             &nbsp; kg</Typography>
-
                                                     </Box>
                                                 </Box>
                                             ))}
 
                                             <Box sx={{ display: 'flex', alignItems: 'center', marginTop: '32px' }}>
+                                                <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
+                                                    รีวิว : &nbsp;
+                                                    <span style={{ color: 'green', fontWeight: '700' }}>
+                                                        {/* ราคารวมของ order ทุก order ที่มี BillID เดียวกัน */}
+                                                        {groupedOrders[billID][0]?.review || 'ยังไม่มีรีวิว'}
+                                                    </span>
+                                                </Typography>
                                                 <Typography sx={{ marginLeft: 'auto', fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
                                                     ราคารวมทั้งหมด:
                                                     <span style={{ color: 'green', fontWeight: '700' }}>
@@ -418,14 +612,15 @@ function Admin() {
                                 })}
                         </Grid2>
                     </Box>
-
                 </CustomTabPanel>
+
 
                 {/* หน้านี้เหมือนกับอัน เสร็จสิ้น แค่ เปลี่ยนฟิลเตอร์จาก เสร็จสิ้น เป็น ยกเลิก */}
                 <CustomTabPanel value={value} index={2}>
                     <Box sx={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
                         <Grid2 container spacing={2} sx={{ mt: '24px', display: 'flex', flexDirection: 'column' }}>
                             {Object.keys(groupedOrders)
+                                .sort((a, b) => b.localeCompare(a, undefined, { numeric: true })) // เรียงจากมากไปน้อย
                                 .filter(billID => groupedOrders[billID].some(order => order.Status === 'ยกเลิก'))
                                 .map((billID) => {
                                     // ฟังก์ชันคำนวณราคารวมของ order ใน BillID เดียวกัน
@@ -461,8 +656,9 @@ function Admin() {
                                                         </span>
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
-                                                        Delivery Time: {order.DeliveryTime || 'ยังไม่มีข้อมูล'}
+                                                        Delivery Time: {order.DeliveryTime ? new Date(order.DeliveryTime).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) : 'ยังไม่มีข้อมูล'}
                                                     </Typography>
+
                                                 </Box>
                                             </Box>
 
@@ -532,6 +728,34 @@ function Admin() {
                     </Box>
 
                 </CustomTabPanel>
+                <CustomTabPanel value={value} index={3}>
+                    <Button variant="contained" onClick={() => setOpenAddService(true)}>Add Service</Button>
+
+                    <TableContainer component={Paper}>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Service Name</TableCell>
+                                    <TableCell>Type</TableCell>
+                                    <TableCell>Actions</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {services.map((service) => (
+                                    <TableRow key={service.id}>
+                                        <TableCell>{service.service_name}</TableCell>
+                                        <TableCell>{service.type}</TableCell>
+                                        <TableCell>
+                                            {/* ปุ่มแก้ไขและลบบริการ */}
+                                            <Button onClick={() => handleEditService(service.id, service)}>Edit</Button>
+                                            <Button onClick={() => handleDeleteService(service.id)}>Delete</Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </CustomTabPanel>
 
             </Box>
             {/* Modal สำหรับแสดงรูป Slip */}
@@ -566,6 +790,43 @@ function Admin() {
                 </Box>
             </Modal>
 
+            {/* Modal สำหรับเพิ่มบริการ */}
+            <Modal
+                open={openAddService}
+                onClose={handleCloseAddService}
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}
+            >
+                <Box
+                    sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        height: '200px',
+                        width: '500px',
+                        bgcolor: 'background.paper',
+                        padding: 2,
+                        borderRadius: '20px'
+                    }}
+                >
+                    <TextField
+                        label="ชื่อบริการ"
+                        name="service_name"
+                        value={newService.service_name}
+                        onChange={handleServiceChange}
+                    />
+                    <TextField
+                        label="ประเภท"
+                        name="type"
+                        value={newService.type}
+                        onChange={handleServiceChange}
+                    />
+                    <Button onClick={handleAddService}>บันทึก</Button>
+                </Box>
+            </Modal>
         </>
     );
 }
