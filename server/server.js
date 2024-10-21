@@ -202,7 +202,6 @@ app.put('/api/product/:pid/status', (req, res) => {
   });
 });
 
-
 // ลบข้อมูล
 app.delete('/api/data/:id', (req, res) => {
   const id = req.params.id;
@@ -221,7 +220,7 @@ app.put('/api/data/:pid', upload.single('productImage'), (req, res) => {
   const { pid } = req.params;
   const { menu, price_per_kg, type } = req.body;  // รวมฟิลด์ type
   const productImage = req.file ? req.file.filename : null;
-  const imageUrl = productImage ? `http://localhost:3000/uploads/${productImage}` : null;  // ใช้ backticks สำหรับ Template Literal
+  const imageUrl = productImage ? `http://localhost:3000/uploads/${productImage}` : null;
 
   const sql = 'UPDATE product SET menu = ?, price_per_kg = ?, productimage = ?, type = ? WHERE pid = ?';
   db.query(sql, [menu, price_per_kg, imageUrl, type, pid], (err, result) => {
@@ -235,6 +234,8 @@ app.put('/api/data/:pid', upload.single('productImage'), (req, res) => {
     });
   });
 });
+
+
 
 
 
@@ -257,26 +258,20 @@ app.post('/api/logout', (req, res) => {
 
 // เอาไว้ เพิ่มข้อมูลจากตะกร้า ลง database orderdetail
 app.post('/api/order', upload.single('slipImage'), (req, res) => {
-  console.log('Order received:', req.body); // ดูข้อมูลที่ถูกส่งจาก client
-  const orders = JSON.parse(req.body.orders); // ดึงข้อมูลการสั่งซื้อจาก body
-  const slipImage = req.file ? req.file.filename : null; // ไฟล์รูปที่อัปโหลด
-  const deliveryTime = req.body.deliveryTime; // ดึงเวลาการจัดส่ง
-
-  // สร้าง URL สำหรับ SlipImage
+  const orders = JSON.parse(req.body.orders);
+  const slipImage = req.file ? req.file.filename : null;
+  const deliveryTime = req.body.deliveryTime;
   const slipImageUrl = slipImage ? `http://localhost:3000/uploads/${slipImage}` : null;
 
-  // ดึง BillID ล่าสุดจากฐานข้อมูล
   db.query('SELECT MAX(BillID) AS maxBillID FROM orderdetail', (err, result) => {
     if (err) {
       console.error('Error fetching max BillID:', err);
       return res.status(500).json({ error: 'Error fetching max BillID: ' + err });
     }
 
-    // ตรวจสอบว่า BillID มีหรือไม่ ถ้าไม่มีให้เริ่มที่ 1
     const maxBillID = result[0].maxBillID ? parseInt(result[0].maxBillID) : 0;
-    const newBillID = (maxBillID + 1).toString().padStart(5, '0'); // ฟอร์แมตให้เป็น 5 หลัก เช่น 00001
+    const newBillID = (maxBillID + 1).toString().padStart(5, '0');
 
-    // เริ่ม transaction
     db.beginTransaction((err) => {
       if (err) {
         console.error('Transaction error:', err);
@@ -284,17 +279,16 @@ app.post('/api/order', upload.single('slipImage'), (req, res) => {
       }
 
       const orderPromises = orders.map((order) => {
-        const { PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status } = order;
+        const { PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status } = order; // เพิ่ม cid
 
         const query = `
           INSERT INTO orderdetail (BillID, PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status, SlipImage, DeliveryTime)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         return new Promise((resolve, reject) => {
-          db.query(query, [newBillID, PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status, slipImageUrl, deliveryTime], (error, results) => {
+          db.query(query, [newBillID, PID, menu, Amount_per_kg, Price, Service, UserAddress, cname, Status, slipImageUrl, deliveryTime], (error, results) => { // เพิ่ม cid
             if (error) {
-              console.error('Query error:', error);
               return reject(error);
             }
             resolve(results);
@@ -302,12 +296,10 @@ app.post('/api/order', upload.single('slipImage'), (req, res) => {
         });
       });
 
-      // รอให้การ insert ทั้งหมดเสร็จสิ้น
       Promise.all(orderPromises)
         .then(() => {
           db.commit((err) => {
             if (err) {
-              console.error('Commit error:', err);
               return db.rollback(() => {
                 res.status(500).json({ error: 'Transaction commit error: ' + err });
               });
@@ -316,7 +308,6 @@ app.post('/api/order', upload.single('slipImage'), (req, res) => {
           });
         })
         .catch((error) => {
-          console.error('Error inserting order:', error);
           db.rollback(() => {
             res.status(500).json({ error: 'Error inserting order: ' + error });
           });
@@ -324,6 +315,7 @@ app.post('/api/order', upload.single('slipImage'), (req, res) => {
     });
   });
 });
+
 
 
 

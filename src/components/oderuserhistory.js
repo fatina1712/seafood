@@ -357,7 +357,7 @@ function OderUserHistory() {
                             {/* ดึงข้อมูล BillID มาจาก ตัวแปร groupedOrders */}
                             {Object.keys(groupedOrders)
                                 .sort((a, b) => b.localeCompare(a, undefined, { numeric: true })) // เรียงจากมากไปน้อย
-
+                                .filter(billID => groupedOrders[billID][0]?.cname === userInfo.cname) // เพิ่มฟิลเตอร์ตรวจสอบ username
                                 // ใส่ filter ไว้ ให้ดึงเฉพาะ ข้อมูล order ที่มี ค่า status ไม่เท่ากับ ยกเลิก และ เสร็จสิ้น นอกจากนี้คือดึงมาหมดเลย
                                 .filter(billID => groupedOrders[billID].some(order => order.Status !== 'ยกเลิก' && order.Status !== 'เสร็จสิ้น'))
                                 // วนลูปการดึงข้อมูล order จาก BillID เดียวกัน
@@ -383,7 +383,7 @@ function OderUserHistory() {
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
                                                         <AccountCircleIcon sx={{ color: 'skyblue', marginRight: '8px' }} />
                                                         {/* ดึงข้อมูล cname ของ order มาแสดง */}
-                                                        Customer name: {order.cname}
+                                                        Customer id : {order.cid} &nbsp; ({order.cname})
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
                                                         <LocationOnIcon sx={{ color: 'red', marginRight: '8px' }} />
@@ -486,10 +486,11 @@ function OderUserHistory() {
                         <Grid2 container spacing={2} sx={{ mt: '24px', display: 'flex', flexDirection: 'column' }}>
                             {/* ดึงข้อมูล BillID มาจาก ตัวแปร groupedOrders */}
                             {Object.keys(groupedOrders)
+                                .sort((a, b) => b.localeCompare(a, undefined, { numeric: true })) // เรียงจากมากไปน้อย
                                 // ใส่ filter ไว้ ให้ดึงเฉพาะ ข้อมูล order ที่มี ค่า status เท่ากับ เสร็จสิ้น 
                                 .filter(billID => groupedOrders[billID].some(order => order.Status === 'เสร็จสิ้น'))
                                 // ใส่ filter ไว้ ให้ดึงเฉพาะ ข้อมูลที่มี username === cname ใน orderdetail
-                                .filter(billID => groupedOrders[billID][0]?.cname === userInfo.username) // เพิ่มฟิลเตอร์ตรวจสอบ username
+                                .filter(billID => groupedOrders[billID][0]?.cname === userInfo.cname) // เพิ่มฟิลเตอร์ตรวจสอบ username
                                 // วนลูปการดึงข้อมูล order จาก BillID เดียวกัน
                                 .map((billID) => {
                                     // ฟังก์ชันคำนวณราคารวมของ order ใน BillID เดียวกัน
@@ -513,7 +514,7 @@ function OderUserHistory() {
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
                                                         <AccountCircleIcon sx={{ color: 'skyblue', marginRight: '8px' }} />
                                                         {/* ดึงข้อมูล cname ของ order มาแสดง */}
-                                                        Customer name: {order.cname}
+                                                        Customer id : {order.cid} &nbsp; ({order.cname})
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
                                                         <LocationOnIcon sx={{ color: 'red', marginRight: '8px' }} />
@@ -530,8 +531,7 @@ function OderUserHistory() {
                                                         </span>
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
-                                                        {/* ดึงข้อมูล DeliveryTime ของ order มาแสดง */}
-                                                        Delivery Time: {order.DeliveryTime || 'ยังไม่มีข้อมูล'}
+                                                        Delivery Time: {order.DeliveryTime ? new Date(order.DeliveryTime).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) : 'ยังไม่มีข้อมูล'}
                                                     </Typography>
                                                 </Box>
                                             </Box>
@@ -633,10 +633,11 @@ function OderUserHistory() {
                         <Grid2 container spacing={2} sx={{ mt: '24px', display: 'flex', flexDirection: 'column' }}>
                             {/* ดึงข้อมูล BillID มาจาก ตัวแปร groupedOrders */}
                             {Object.keys(groupedOrders)
+                                .sort((a, b) => b.localeCompare(a, undefined, { numeric: true })) // เรียงจากมากไปน้อย
                                 // ใส่ filter ไว้ ให้ดึงเฉพาะ ข้อมูล order ที่มี ค่า status เท่ากับ ยกเลิก
                                 .filter(billID => groupedOrders[billID].some(order => order.Status === 'ยกเลิก'))
                                 // ใส่ filter ไว้ ให้ดึงเฉพาะ ข้อมูลที่มี username === cname ใน orderdetail
-                                .filter(billID => groupedOrders[billID][0]?.cname === userInfo.username) // เพิ่มฟิลเตอร์ตรวจสอบ username
+                                .filter(billID => groupedOrders[billID][0]?.cname === userInfo.cname) // เพิ่มฟิลเตอร์ตรวจสอบ username
                                 // วนลูปการดึงข้อมูล order จาก BillID เดียวกัน
                                 .map((billID) => {
                                     // ฟังก์ชันคำนวณราคารวมของ order ใน BillID เดียวกัน
@@ -660,7 +661,7 @@ function OderUserHistory() {
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
                                                         <AccountCircleIcon sx={{ color: 'skyblue', marginRight: '8px' }} />
                                                         {/* ดึงข้อมูล cname ของ order มาแสดง */}
-                                                        Customer name: {order.cname}
+                                                        Customer id : {order.cid} &nbsp; ({order.cname})
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
                                                         <LocationOnIcon sx={{ color: 'red', marginRight: '8px' }} />
@@ -677,8 +678,7 @@ function OderUserHistory() {
                                                         </span>
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
-                                                        {/* ดึงข้อมูล DeliveryTime ของ order มาแสดง */}
-                                                        Delivery Time: {order.DeliveryTime || 'ยังไม่มีข้อมูล'}
+                                                        Delivery Time: {order.DeliveryTime ? new Date(order.DeliveryTime).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) : 'ยังไม่มีข้อมูล'}
                                                     </Typography>
                                                 </Box>
                                             </Box>

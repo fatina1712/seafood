@@ -245,36 +245,81 @@ const Home = () => {
         navigate('/orderhistory');
     }
 
-    // ฟังก์ชั่นนี้เป็นการเอาข้อมูล ที่ได้จากใน Cart เอาลงไปใน Database ตาราง orderdetail
+    // // ฟังก์ชั่นนี้เป็นการเอาข้อมูล ที่ได้จากใน Cart เอาลงไปใน Database ตาราง orderdetail
+    // const saveCartToDatabase = async () => {
+    //     // เช็คว่าเข้าสู่ระบบหรือยังก่อนจะสั่ง
+    //     if (!userInfo) {
+    //         alert('กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อ');
+    //         return;
+    //     }
+
+    //     // if (!isDeliveryTimeValid(deliveryTime)) {
+    //     //     alert('เวลาการจัดส่งจะอยู่ในช่วง 5:00 AM ถึง 11:59 AM');
+    //     //     return;
+    //     // }
+
+    //     // ดึงข้อมูลจาก cart ที่ setCart มาจากฟังก์ชั่น addToCart
+    //     const orders = cart.map(item => ({
+    //         PID: item.product.pid,
+    //         menu: item.product.menu,
+    //         cname: userInfo.cname,
+    //         Amount_per_kg: item.amount,
+    //         Price: (item.product.price_per_kg * item.amount).toFixed(2),
+    //         Service: item.cookType,
+    //         UserAddress: userInfo.address,
+    //         // status set ค่าเริ่มต้นไว้ว่าเป็น กำลังดำเนินการ
+    //         Status: 'กำลังดำเนินการ',
+    //     }));
+
+    //     const formData = new FormData();
+    //     formData.append('slipImage', slipImage);
+    //     formData.append('deliveryTime', deliveryTime);
+    //     formData.append('orders', JSON.stringify(orders)); // แปลง orders เป็น JSON string
+
+    //     try {
+    //         const response = await axios.post('http://localhost:3000/api/order', formData, {
+    //             headers: {
+    //                 'Content-Type': 'multipart/form-data',
+    //             },
+    //         });
+
+    //         if (response.status === 200) {
+    //             alert('สั่งซื้อสำเร็จแล้ว');
+    //             console.log('Order BillID:', response.data.BillID);
+    //             // อาจล้างตะกร้าหรือเปลี่ยนเส้นทางที่นี่
+    //             setIsCartOpen(false);
+    //             setCart([]);
+    //         } else {
+    //             alert('เกิดข้อผิดพลาดในการสั่งซื้อ');
+    //         }
+    //     } catch (error) {
+    //         console.error('Error placing order:', error);
+    //         alert('เกิดข้อผิดพลาดในการสั่งซื้อ');
+    //     }
+    // };
+
     const saveCartToDatabase = async () => {
-        // เช็คว่าเข้าสู่ระบบหรือยังก่อนจะสั่ง
         if (!userInfo) {
             alert('กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อ');
             return;
         }
 
-        // if (!isDeliveryTimeValid(deliveryTime)) {
-        //     alert('เวลาการจัดส่งจะอยู่ในช่วง 5:00 AM ถึง 11:59 AM');
-        //     return;
-        // }
-
-        // ดึงข้อมูลจาก cart ที่ setCart มาจากฟังก์ชั่น addToCart
         const orders = cart.map(item => ({
             PID: item.product.pid,
             menu: item.product.menu,
             cname: userInfo.cname,
+            //cid: userInfo.id, // เพิ่ม cid (Customer ID)
             Amount_per_kg: item.amount,
-            Price: (item.product.price_per_kg * item.amount).toFixed(2),
+            Price: ((item.product.price_per_kg * item.amount) + (20 / cart.length)).toFixed(2),
             Service: item.cookType,
             UserAddress: userInfo.address,
-            // status set ค่าเริ่มต้นไว้ว่าเป็น กำลังดำเนินการ
             Status: 'กำลังดำเนินการ',
         }));
 
         const formData = new FormData();
         formData.append('slipImage', slipImage);
         formData.append('deliveryTime', deliveryTime);
-        formData.append('orders', JSON.stringify(orders)); // แปลง orders เป็น JSON string
+        formData.append('orders', JSON.stringify(orders));
 
         try {
             const response = await axios.post('http://localhost:3000/api/order', formData, {
@@ -286,7 +331,6 @@ const Home = () => {
             if (response.status === 200) {
                 alert('สั่งซื้อสำเร็จแล้ว');
                 console.log('Order BillID:', response.data.BillID);
-                // อาจล้างตะกร้าหรือเปลี่ยนเส้นทางที่นี่
                 setIsCartOpen(false);
                 setCart([]);
             } else {
@@ -297,6 +341,7 @@ const Home = () => {
             alert('เกิดข้อผิดพลาดในการสั่งซื้อ');
         }
     };
+
 
     // ตัวแปรเก็บข้อมูล orders คือข้อมูล ตาราง orderdetail 
     const [orders, setOrders] = useState([]);
@@ -806,14 +851,20 @@ const Home = () => {
                         </Box>
                     </Box>
                     <Box sx={{ display: 'flex', ml: 'auto', mt: 3 }}>
-                        <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
-                            ทั้งหมด
-                            <span style={{ fontWeight: '700', color: 'red', marginLeft: '8px', marginRight: '8px' }}>
-                                {/* อันนี้คือการคำนวณราคารวมทั้งหมดของออเดอร์ ใช้สูตรตามนี้ */}
-                                {cart.reduce((total, item) => total + parseFloat(item.product.price_per_kg) * parseFloat(item.amount), 0).toFixed(2)}
-                            </span>
-                            บาท
-                        </Typography>
+                        <Box>
+                            <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', color: 'green' }}>
+                                บวกค่าส่ง 20 บาท
+                            </Typography>
+                            <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600' }}>
+                                ทั้งหมด
+                                <span style={{ fontWeight: '700', color: 'red', marginLeft: '8px', marginRight: '8px' }}>
+                                    {/* อันนี้คือการคำนวณราคารวมทั้งหมดของออเดอร์ + ค่าส่ง 20 บาท */}
+                                    {(cart.reduce((total, item) => total + parseFloat(item.product.price_per_kg) * parseFloat(item.amount), 0) + 20).toFixed(2)}
+                                </span>
+                                บาท
+                            </Typography>
+                        </Box>
+
                         <Button
                             // เมื่อคลิกปุ่มนี้จะทำการ save ข้อมูลที่อยู่ในตะกร้าทั้งหมด เข้า database ตาราง orderdetail
                             onClick={saveCartToDatabase}

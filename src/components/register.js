@@ -35,7 +35,6 @@ const Register = () => {
 
         // ตรวจสอบว่ารูปแบบของ email ที่กรอกมาถูกต้องมั้ย
         if (!validateEmail(email)) {
-            alert('กรุณากรอกอีเมลให้ถูกต้อง');
             setIsEmailValid(false);
             return;
         }

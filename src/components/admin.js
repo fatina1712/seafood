@@ -145,6 +145,7 @@ function Admin() {
         }
     };
 
+    // ข้างล่างนี้ที่มีคำว่า Service เป็นการเพิ่ม ลบ แก้ไขของ service ทั้งหมด
     const [services, setServices] = React.useState([]);
     const [newService, setNewService] = React.useState({ service_name: '', type: '' });
     const [openAddService, setOpenAddService] = React.useState(false);
@@ -192,6 +193,7 @@ function Admin() {
                 console.error('Error updating service:', error);
             });
     };
+
 
     const handleServiceChange = (e) => {
         const { name, value } = e.target;
@@ -274,14 +276,13 @@ function Admin() {
         const amount = calculateTotals(selectedStartDate, selectedEndDate);
         // อัปเดต state เฉพาะเมื่อค่าที่คำนวณได้เปลี่ยนแปลง
         if (
-            amount.totalToday !== totalAmount.totalToday || 
-            amount.totalThisDay !== totalAmount.totalThisDay || 
+            amount.totalToday !== totalAmount.totalToday ||
+            amount.totalThisDay !== totalAmount.totalThisDay ||
             amount.totalLast7Days !== totalAmount.totalLast7Days
         ) {
             setTotalAmount(amount);
         }
     }, [groupedOrders, selectedStartDate, selectedEndDate]); // รวม dependency ทั้งหมด
-    
 
 
     return (
@@ -306,7 +307,6 @@ function Admin() {
                             {/* ดึงข้อมูล BillID มาจาก ตัวแปร groupedOrders */}
                             {Object.keys(groupedOrders)
                                 .sort((a, b) => b.localeCompare(a, undefined, { numeric: true })) // เรียงจากมากไปน้อย
-
                                 // ใส่ filter ไว้ ให้ดึงเฉพาะ ข้อมูล order ที่มี ค่า status ไม่เท่ากับ ยกเลิก และ เสร็จสิ้น นอกจากนี้คือดึงมาหมดเลย
                                 .filter(billID => groupedOrders[billID].some(order => order.Status !== 'ยกเลิก' && order.Status !== 'เสร็จสิ้น'))
                                 // วนลูปการดึงข้อมูล order จาก BillID เดียวกัน
@@ -332,7 +332,7 @@ function Admin() {
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
                                                         <AccountCircleIcon sx={{ color: 'skyblue', marginRight: '8px' }} />
                                                         {/* ดึงข้อมูล cname ของ order มาแสดง */}
-                                                        Customer name: {order.cname}
+                                                        Customer name : {order.cname} 
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
                                                         <LocationOnIcon sx={{ color: 'red', marginRight: '8px' }} />
@@ -516,7 +516,7 @@ function Admin() {
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
                                                         <AccountCircleIcon sx={{ color: 'skyblue', marginRight: '8px' }} />
                                                         {/* ดึงข้อมูล cname ของ order มาแสดง */}
-                                                        Customer name: {order.cname}
+                                                        Customer name : {order.cname} 
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
                                                         <LocationOnIcon sx={{ color: 'red', marginRight: '8px' }} />
@@ -631,7 +631,6 @@ function Admin() {
 
                                     // ใช้ข้อมูลของ order แรกใน BillID เพื่อแสดงข้างๆ Order ID
                                     const order = groupedOrders[billID][0];
-
                                     return (
                                         <Grid2 item key={billID} sx={{ border: '2px solid red', borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -641,7 +640,8 @@ function Admin() {
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
                                                         <AccountCircleIcon sx={{ color: 'skyblue', marginRight: '8px' }} />
-                                                        Customer name: {order.cname}
+                                                        {/* ดึงข้อมูล cname ของ order มาแสดง */}
+                                                        Customer name : {order.cname} 
                                                     </Typography>
                                                     <Typography sx={{ fontFamily: 'IBM Plex Sans Thai', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
                                                         <LocationOnIcon sx={{ color: 'red', marginRight: '8px' }} />

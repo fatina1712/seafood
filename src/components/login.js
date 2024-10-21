@@ -81,10 +81,14 @@ const Login = ({ setUser }) => {
                         {/* textfield ของ username */}
                         <TextField
                             placeholder='Username'
+                            variant="outlined"
                             // กำหนดให้ข้อมูลที่กรอกเป็นค่าของ username
                             value={username}
                             // เมื่อกดปุ่ม login ด้านล่างแล้ว ข้อมูลจะบันทึกไปในค่า setUsername
                             onChange={(e) => setUsername(e.target.value)}
+                            InputLabelProps={{
+                                style: { color: '#878787' }
+                            }}
                             InputProps={{
                                 style: {
                                     border: '1px solid #878787',
@@ -108,6 +112,9 @@ const Login = ({ setUser }) => {
                             value={password}
                             // เมื่อกดปุ่ม login ด้านล่างแล้ว ข้อมูลจะบันทึกไปในค่า setPassword
                             onChange={(e) => setPassword(e.target.value)}
+                            InputLabelProps={{
+                                style: { color: '#878787' }
+                            }}
                             InputProps={{
                                 style: {
                                     border: '1px solid #878787',

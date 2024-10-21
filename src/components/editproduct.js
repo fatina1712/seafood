@@ -173,11 +173,13 @@ function EditProduct() {
     const formData = new FormData();
     formData.append('menu', currentProduct.menu);
     formData.append('price_per_kg', currentProduct.price_per_kg);
-    formData.append('type', currentProduct.type); // เพิ่มฟิลด์ประเภทสินค้า
+    formData.append('type', currentProduct.type);
 
-    // ตรวจสอบว่ามีการอัปโหลดรูปใหม่มั้ย
-    if (currentProduct.productImage) {
-      formData.append('productImage', currentProduct.productImage);
+    // ตรวจสอบว่ามีการอัปโหลดรูปใหม่หรือไม่
+    if (currentProduct.productImage instanceof File) {
+      formData.append('productImage', currentProduct.productImage); // ถ้าเป็นไฟล์ใหม่
+    } else if (typeof currentProduct.productImage === 'string') {
+      formData.append('existingImage', currentProduct.productImage); // ถ้าเป็น URL ของรูปเดิม
     }
 
     axios.put(`http://localhost:3000/api/data/${currentProduct.pid}`, formData, {
@@ -188,7 +190,7 @@ function EditProduct() {
       .then(response => {
         console.log(response.data);
         setProducts(products.map(product =>
-          product.pid === currentProduct.pid ? currentProduct : product
+          product.pid === currentProduct.pid ? { ...product, ...currentProduct } : product
         ));
         fetchProducts();
         handleClose();
@@ -197,6 +199,10 @@ function EditProduct() {
         console.error("There was an error updating the product!", error);
       });
   };
+
+
+
+
 
 
   // ฟังก์ชั่นดึงข้อมูลของ Products มาแสดง
@@ -236,10 +242,14 @@ function EditProduct() {
     navigate('/admin');
   }
 
+  // ข้างล่างนี้ที่มีคำว่า Service เป็นการเพิ่ม ลบ แก้ไขของ service ทั้งหมด
   const [services, setServices] = React.useState([]);
   const [newService, setNewService] = React.useState({ service_name: '', type: '' });
   const [openAddService, setOpenAddService] = React.useState(false);
+  const [openEditService, setOpenEditService] = React.useState(false);
+  const [editService, setEditService] = React.useState({ id: '', service_name: '', type: '' });
 
+  // ดึงข้อมูลของ service มาแสดง
   const fetchServices = async () => {
     try {
       const response = await axios.get('http://localhost:3000/api/service');
@@ -249,14 +259,16 @@ function EditProduct() {
     }
   };
 
+  // useEffect คือกาทำทุกครั้งเมื่อมีอะไรเปลี่ยนแปลง อันนี้คือเมื่อเปิดเว็บให้ ใช้งานฟังก์ชั่น fetchServices คือการดึงข้อมูล
   useEffect(() => {
     fetchServices();
   }, []);
 
+  // เพิ่มข้อมูล service
   const handleAddService = () => {
     axios.post('http://localhost:3000/api/service', newService)
       .then(() => {
-        fetchServices(); // ดึงข้อมูลบริการใหม่
+        fetchServices(); // ดึงข้อมูล Service ใหม่
         handleCloseAddService();
       })
       .catch(error => {
@@ -264,35 +276,53 @@ function EditProduct() {
       });
   };
 
+  // ลบข้อมูล Service
   const handleDeleteService = (id) => {
     axios.delete(`http://localhost:3000/api/service/${id}`)
       .then(() => {
-        fetchServices(); // ดึงข้อมูลบริการใหม่
+        fetchServices(); // ดึงข้อมูล Service ใหม่
       })
       .catch(error => {
         console.error('Error deleting service:', error);
       });
   };
 
+  // แก้ไขข้อมูล service
   const handleEditService = (id, updatedService) => {
     axios.put(`http://localhost:3000/api/service/${id}`, updatedService)
       .then(() => {
-        fetchServices(); // ดึงข้อมูลบริการใหม่
+        fetchServices(); // ดึงข้อมูล Service ใหม่
       })
       .catch(error => {
         console.error('Error updating service:', error);
       });
   };
 
+  //
   const handleServiceChange = (e) => {
     const { name, value } = e.target;
     setNewService({ ...newService, [name]: value });
   };
 
+
   const handleCloseAddService = () => {
     setOpenAddService(false);
   };
 
+  const handleEditServiceChange = (e) => {
+    const { name, value } = e.target;
+    setEditService({ ...editService, [name]: value }); // อัปเดตค่าของ service ที่แก้ไข
+  };
+
+
+  const handleOpenEditService = (service) => {
+    setEditService(service); // กำหนดค่าเริ่มต้นจาก service ที่เลือก
+    setOpenEditService(true); // เปิด modal แก้ไข
+  };
+
+  const handleCloseEditService = () => {
+    setOpenEditService(false); // ปิด modal แก้ไข
+  };
 
 
   return (
@@ -571,8 +601,8 @@ function EditProduct() {
                     <TableCell>{service.service_name}</TableCell>
                     <TableCell>{service.type}</TableCell>
                     <TableCell>
-                      {/* ปุ่มแก้ไขและลบบริการ */}
-                      <Button onClick={() => handleEditService(service.id, service)}>Edit</Button>
+                      {/* ปุ่มแก้ไขและลบ Service  */}
+                      <Button onClick={() => handleOpenEditService(service)}>Edit</Button>
                       <Button onClick={() => handleDeleteService(service.id)}>Delete</Button>
                     </TableCell>
                   </TableRow>
@@ -699,6 +729,7 @@ function EditProduct() {
           <Typography id="modal-title" variant="h6" component="h2">
             แก้ไขข้อมูลสินค้า
           </Typography>
+
           <TextField
             margin="normal"
             fullWidth
@@ -709,6 +740,7 @@ function EditProduct() {
             variant="outlined"
             sx={{ mt: 2 }}
           />
+
           <TextField
             margin="normal"
             fullWidth
@@ -719,6 +751,15 @@ function EditProduct() {
             variant="outlined"
             sx={{ mt: 2 }}
           />
+
+          {/* แสดงรูปภาพปัจจุบัน ถ้ามี */}
+          {currentProduct.productImage && typeof currentProduct.productImage === 'string' && (
+            <img
+              src={currentProduct.productImage}  // ใช้ URL ของรูปที่ดึงมาจาก database
+              alt="current product"
+              style={{ width: "100%", height: "auto", marginTop: "16px" }}
+            />
+          )}
 
           {/* Dropdown สำหรับเลือกประเภทสินค้า */}
           <select
@@ -742,7 +783,7 @@ function EditProduct() {
             onChange={(e) =>
               setCurrentProduct({
                 ...currentProduct,
-                productImage: e.target.files[0],
+                productImage: e.target.files[0],  // ตั้งค่าไฟล์รูปใหม่ถ้ามีการอัปโหลด
               })
             }
             accept="image/*"
@@ -765,6 +806,7 @@ function EditProduct() {
           </Box>
         </Box>
       </Modal>
+
 
 
       {/* Modal สำหรับเพิ่มService */}
@@ -790,7 +832,7 @@ function EditProduct() {
           }}
         >
           <TextField
-            label="ชื่อบริการ"
+            label="ชื่อ Service "
             name="service_name"
             value={newService.service_name}
             onChange={handleServiceChange}
@@ -804,6 +846,45 @@ function EditProduct() {
           <Button onClick={handleAddService}>บันทึก</Button>
         </Box>
       </Modal>
+
+      {/* Modal แก้ไข Services */}
+      <Modal
+        open={openEditService}
+        onClose={handleCloseEditService}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '200px',
+            width: '500px',
+            bgcolor: 'background.paper',
+            padding: 2,
+            borderRadius: '20px',
+          }}
+        >
+          <TextField
+            label="ชื่อ Service"
+            name="service_name"
+            value={editService.service_name}
+            onChange={handleEditServiceChange}
+          />
+          <TextField
+            label="ประเภท"
+            name="type"
+            value={editService.type}
+            onChange={handleEditServiceChange}
+          />
+          <Button onClick={() => handleEditService(editService.id, editService)}>บันทึก</Button>
+        </Box>
+      </Modal>
+
 
     </>
   );
